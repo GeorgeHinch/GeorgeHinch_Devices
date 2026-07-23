@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ESP32 OTA firmware manifest",
+  "type": "object",
+  "required": ["schema_version", "release", "firmware"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "release": { "type": "string" },
+    "firmware": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["version", "target", "minimum_hardware_revision", "url", "sha256", "size"],
+        "properties": {
+          "version": { "type": "string" },
+          "target": { "type": "string" },
+          "minimum_hardware_revision": { "type": "integer", "minimum": 1 },
+          "url": { "type": "string", "format": "uri" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}
