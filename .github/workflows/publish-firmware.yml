@@ -1,0 +1,62 @@
+name: Publish firmware release
+
+on:
+  push:
+    tags:
+      - 'audio_sensor/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Validate release contents and hash
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#audio_sensor/v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+          release="firmware/audio_sensor/v${version}"
+          sketch="$(find "$release" -maxdepth 1 -type f -name '*.ino' -print -quit)"
+          test -n "$sketch"
+          expected_sketch="audio_sensor_${version//./_}.ino"
+          test "$(basename "$sketch")" = "$expected_sketch"
+          binary="$release/${expected_sketch%.ino}.bin"
+          test -f "$binary"
+          test -f "$release/BUILD_INFO.md"
+
+          hash="$(sha256sum "$binary" | awk '{print tolower($1)}')"
+          grep -qi "$hash" "$release/BUILD_INFO.md"
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "binary=$binary" >> "$GITHUB_OUTPUT"
+
+      - name: Package release
+        shell: bash
+        env:
+          RELEASE: ${{ steps.validate.outputs.release }}
+          VERSION: ${{ steps.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          zip -r "audio_sensor_v${VERSION}.zip" "$RELEASE"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.validate.outputs.version }}
+          BINARY: ${{ steps.validate.outputs.binary }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "audio_sensor_v${VERSION}.zip" \
+            "$BINARY" \
+            --title "Audio Sensor v${VERSION}" \
+            --generate-notes

@@ -3,3 +3,4 @@
 include/config.h
 release-assets/
 .DS_Store
+firmware/**/build/
