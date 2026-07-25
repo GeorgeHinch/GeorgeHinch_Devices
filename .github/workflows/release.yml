@@ -31,10 +31,23 @@ jobs:
           cp .pio/build/crossing-controller/firmware.bin \
              release-assets/crossing-controller.bin
 
+      - name: Carry forward existing manifest entries
+        run: |
+          if curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/manifest.json" \
+              -o release-assets/base-manifest.json; then
+            echo "Carrying forward existing device entries"
+          else
+            rm -f release-assets/base-manifest.json
+          fi
+
       - name: Generate manifest
         env:
           ASSET_DIR: release-assets
+          BASE_MANIFEST: release-assets/base-manifest.json
         run: python scripts/generate_manifest.py
+
+      - name: Remove manifest seed
+        run: rm -f release-assets/base-manifest.json
 
       - name: Publish GitHub Release
         env:
