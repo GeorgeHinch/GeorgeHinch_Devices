@@ -45,8 +45,19 @@ jobs:
         env:
           RELEASE: ${{ steps.validate.outputs.release }}
           VERSION: ${{ steps.validate.outputs.version }}
+          BINARY: ${{ steps.validate.outputs.binary }}
         run: |
           set -euo pipefail
+          mkdir -p release-assets
+          cp "$BINARY" release-assets/
+          FIRMWARE_VERSION="$VERSION" \
+          DEVICE_TYPE="audio-sensor" \
+          HARDWARE_TARGET="esp32-c3" \
+          MINIMUM_HARDWARE_REVISION="2" \
+          ASSET_DIR=release-assets \
+          python scripts/generate_manifest.py
+          test -f release-assets/manifest.json
+          grep -q '"audio-sensor"' release-assets/manifest.json
           zip -r "audio_sensor_v${VERSION}.zip" "$RELEASE"
 
       - name: Create GitHub release
@@ -57,6 +68,6 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             "audio_sensor_v${VERSION}.zip" \
-            "$BINARY" \
+            release-assets/* \
             --title "Audio Sensor v${VERSION}" \
             --generate-notes
