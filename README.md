@@ -88,3 +88,24 @@ For operating model trains, do not install automatically merely because an updat
 ## Current scope
 
 The included firmware is a working OTA foundation. Device-specific crossing, ToF, RFID, MQTT, and safe-state logic should be integrated into separate PlatformIO environments or source modules.
+
+## Audio Sensor firmware
+
+The Audio Sensor firmware is maintained under `firmware/audio_sensor/`. Each release is self-contained in a version folder, for example:
+
+```text
+firmware/audio_sensor/v0.1.5/
+  audio_sensor_0_1_5.ino
+  audio_sensor_0_1_5.bin
+  DistanceSensor.h
+  BUILD_INFO.md
+```
+
+Create and publish the next patch release from a Windows development machine with:
+
+```powershell
+.\tools\New-FirmwareRelease.ps1 -DeviceType audio_sensor -NextPatch
+.\tools\Publish-Firmware.ps1 -DeviceType audio_sensor -Version 0.1.6 -Push
+```
+
+The publisher performs a clean compile, records the binary hash, commits and tags the release, and pushes it to GitHub. The `audio_sensor/v*` tag then starts the dedicated GitHub Actions release workflow.
