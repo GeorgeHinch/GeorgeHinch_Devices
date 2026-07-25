@@ -14,8 +14,13 @@ asset_dir = Path(os.environ.get("ASSET_DIR", "release-assets"))
 device_type_override = os.environ.get("DEVICE_TYPE")
 target = os.environ.get("HARDWARE_TARGET", "esp32-c3")
 minimum_hardware_revision = int(os.environ.get("MINIMUM_HARDWARE_REVISION", "1"))
+base_manifest_path = os.environ.get("BASE_MANIFEST")
 
 entries = {}
+if base_manifest_path and Path(base_manifest_path).is_file():
+    base_manifest = json.loads(Path(base_manifest_path).read_text())
+    entries.update(base_manifest.get("firmware", {}))
+
 for binary in sorted(asset_dir.glob("*.bin")):
     device_type = device_type_override or binary.stem
     data = binary.read_bytes()

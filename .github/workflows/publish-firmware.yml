@@ -50,12 +50,20 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           cp "$BINARY" release-assets/
+          if curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/manifest.json" \
+              -o release-assets/base-manifest.json; then
+            echo "Carrying forward existing device entries"
+          else
+            rm -f release-assets/base-manifest.json
+          fi
           FIRMWARE_VERSION="$VERSION" \
           DEVICE_TYPE="audio-sensor" \
           HARDWARE_TARGET="esp32-c3" \
           MINIMUM_HARDWARE_REVISION="2" \
+          BASE_MANIFEST=release-assets/base-manifest.json \
           ASSET_DIR=release-assets \
           python scripts/generate_manifest.py
+          rm -f release-assets/base-manifest.json
           test -f release-assets/manifest.json
           grep -q '"audio-sensor"' release-assets/manifest.json
           zip -r "audio_sensor_v${VERSION}.zip" "$RELEASE"
