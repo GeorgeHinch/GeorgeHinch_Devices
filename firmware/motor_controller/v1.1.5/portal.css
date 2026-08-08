@@ -49,6 +49,11 @@ input:disabled, select:disabled { color: #657183; background: #e9edf2; cursor: n
 .secondary { border: 1px solid #b7c1ce; color: #344054; background: #fff; }
 .action-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .action-row button { padding: 9px 13px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.update-form { margin: 0; }
+.update-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.update-button { min-width: 118px; min-height: 40px; padding: 9px 14px; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.update-icon-button { display: inline-grid; width: 40px; min-width: 40px; padding: 0; place-items: center; font-size: 1.35rem; line-height: 1; }
+.update-button:hover, .update-button:focus-visible { border-color: var(--accent); color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
 .confirm { border: 1px solid var(--accent); color: #fff; background: var(--accent); }
 .confirm.danger { border-color: var(--danger); background: var(--danger); }
 .dialog-actions button:disabled { opacity: .55; cursor: wait; }
