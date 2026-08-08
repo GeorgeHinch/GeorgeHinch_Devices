@@ -12,9 +12,7 @@ uint32_t restartAtMs = 0;
 char configApSsid[33];
 
 void updateConfigAccessPointSsid() {
-  const size_t idLength = strlen(deviceId);
-  const char* suffix = idLength >= 4 ? deviceId + idLength - 4 : deviceId;
-  snprintf(configApSsid, sizeof(configApSsid), "MotorController-%s", suffix);
+  snprintf(configApSsid, sizeof(configApSsid), "%s", deviceId);
 }
 
 #if 0  // Replaced by the generated portal shared with the browser preview.

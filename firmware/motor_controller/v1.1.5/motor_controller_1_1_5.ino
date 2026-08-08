@@ -29,7 +29,7 @@ PubSubClient mqtt(networkClient);
 Preferences preferences;
 Adafruit_VL53L0X rangeSensors[SENSOR_COUNT];
 
-char deviceId[20];
+char deviceId[24];
 char fullMac[18];
 char mqttHost[128];
 
@@ -445,12 +445,13 @@ void saveThreshold(uint8_t index) {
 }
 
 void buildIdentity() {
-  uint8_t mac[6];
-  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  const uint64_t mac = ESP.getEfuseMac();
   snprintf(fullMac, sizeof(fullMac), "%02X:%02X:%02X:%02X:%02X:%02X",
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  snprintf(deviceId, sizeof(deviceId), "ESP_%02X%02X%02X%02X",
-           mac[2], mac[3], mac[4], mac[5]);
+           (uint8_t)mac, (uint8_t)(mac >> 8), (uint8_t)(mac >> 16),
+           (uint8_t)(mac >> 24), (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+  snprintf(deviceId, sizeof(deviceId), "MOTORCON_%02X%02X%02X%02X%02X%02X",
+           (uint8_t)mac, (uint8_t)(mac >> 8), (uint8_t)(mac >> 16),
+           (uint8_t)(mac >> 24), (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
 
   for (uint8_t i = 0; i < OBJECT_COUNT; ++i) {
     snprintf(objects[i].fullId, sizeof(objects[i].fullId), "%s/%s", deviceId, objects[i].localId);
@@ -982,7 +983,7 @@ void serviceMqtt() {
   if (anyMotorMoving() || millis() - lastMqttRetryMs < MQTT_RETRY_MS) return;
   lastMqttRetryMs = millis();
 
-  String clientId = String("motor_") + deviceId;
+  String clientId(deviceId);
   bool connected = strlen(settings.mqttUser) > 0
                      ? mqtt.connect(clientId.c_str(), settings.mqttUser, settings.mqttPassword)
                      : mqtt.connect(clientId.c_str());

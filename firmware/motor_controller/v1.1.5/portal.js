@@ -1,5 +1,5 @@
 const PREVIEW_DEFAULTS = {
-  deviceId: 'ESP_1234ABCD', ip: '192.168.4.1', firmware: '1.1.5', connected: true,
+  deviceId: 'MOTORCON_123456789ABC', ip: '192.168.4.1', firmware: '1.1.5', connected: true,
   linked: true, hold: false, stopLoss: true,
   motors: [{ direction: 'cw', speed: 500 }, { direction: 'cw', speed: 500 }],
   begAction: 0, begIndefinite: true, begTime: 30, globalBegEnabled: true,
@@ -98,7 +98,7 @@ function populate(config) {
   document.querySelector('#device-id').textContent = config.deviceId;
   document.querySelector('#device-ip').textContent = config.ip;
   document.querySelector('#firmware-version').textContent = config.firmware;
-  document.querySelector('#config-ssid').textContent = config.configSsid || `MotorController-${config.deviceId.slice(-4)}`;
+  document.querySelector('#config-ssid').textContent = config.configSsid || config.deviceId;
   setChecked('linked', config.linked); setChecked('hold', config.hold); setChecked('stoploss', config.stopLoss);
   setValue('dir1', config.motors[0].direction); setValue('speed1', config.motors[0].speed);
   setValue('dir2', config.motors[1].direction); setValue('speed2', config.motors[1].speed);

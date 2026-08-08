@@ -16,9 +16,9 @@ The ESP32 board package supplies WiFi, Wire, Preferences, and the ESP32 MAC API.
 
 ## JMRI objects
 
-The device ID is generated from the ESP32 MAC address in the same style as the
-MQTT Audio Sensor (`ESP_XXXXXXXX`). Each local ID below is prefixed by that device
-ID in MQTT.
+The device ID is generated from the full ESP32 MAC address in the same style as
+the Audio Sensor (`MOTORCON_XXXXXXXXXXXX`). Each local ID below is prefixed by
+that device ID in MQTT.
 
 | ID | Type | Purpose |
 | --- | --- | --- |
@@ -64,9 +64,9 @@ the board has no home or limit switches.
 
 The configuration page is available at the controller's normal Wi-Fi IP address.
 If Wi-Fi cannot connect for 30 seconds, or the BEG button is held while powering
-on, the controller also creates a captive setup network named
-`MotorController-XXXX`. This temporary setup network is open, matching the
-other device firmware. The Wi-Fi password entered in the portal is only used
+on, the controller also creates a captive setup network with the same name as
+the device ID, such as `MOTORCON_XXXXXXXXXXXX`. This temporary setup network is
+open, matching the other device firmware. The Wi-Fi password entered in the portal is only used
 when the controller joins the layout's normal network.
 
 The page saves Wi-Fi, MQTT/JMRI, motor, sensor, safety, button, and indicator
