@@ -6,7 +6,7 @@ const PREVIEW_DEFAULTS = {
   sensors: [{ present: true, threshold: 250 }, { present: true, threshold: 250 }],
   hysteresis: 20, samplePeriod: 100, sensorMode: 0, sensorTarget: 0, sensorTime: 30,
   wifiSsid: 'Layout Wi-Fi', mqttEnabled: true, mqttBroker: 'mqtt.layout.local', mqttPort: 1883,
-  mqttUser: 'layout-controller', jmriChannel: 'trains/', otaState: 'Idle: 1.1.5'
+  mqttUser: 'layout-controller', jmriChannel: 'trains/', otaState: 'Up to date (v1.1.5)'
 };
 
 function previewConfig() {

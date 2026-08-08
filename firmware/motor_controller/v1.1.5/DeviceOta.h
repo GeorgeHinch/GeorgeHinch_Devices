@@ -32,7 +32,7 @@ inline String queuedVersion;
 inline String queuedUrl;
 inline String queuedSha;
 inline size_t queuedSize = 0;
-inline String lastState = "Boot: not checked";
+inline String lastState = "Not checked";
 inline uint32_t lastCheckMs = 0;
 inline bool bootCheckDone = false;
 
@@ -109,13 +109,13 @@ inline bool downloadAndInstall(PubSubClient& mqtt, bool mqttEnabled,
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   if (!http.begin(client, url)) {
-    publishState(mqtt, mqttEnabled, "ERROR: firmware request init");
+    publishState(mqtt, mqttEnabled, "Update failed: request initialization");
     return false;
   }
 
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
-    publishState(mqtt, mqttEnabled, String("ERROR: firmware HTTP ") + status);
+    publishState(mqtt, mqttEnabled, String("Update failed: firmware HTTP ") + status);
     http.end();
     return false;
   }
@@ -123,14 +123,14 @@ inline bool downloadAndInstall(PubSubClient& mqtt, bool mqttEnabled,
   int contentLength = http.getSize();
   if (expectedSize > 0 && contentLength > 0 &&
       static_cast<size_t>(contentLength) != expectedSize) {
-    publishState(mqtt, mqttEnabled, "ERROR: firmware size mismatch");
+    publishState(mqtt, mqttEnabled, "Update failed: firmware size mismatch");
     http.end();
     return false;
   }
 
   if (!Update.begin(contentLength > 0 ? contentLength : UPDATE_SIZE_UNKNOWN)) {
     Update.printError(Serial);
-    publishState(mqtt, mqttEnabled, "ERROR: unable to prepare OTA partition");
+    publishState(mqtt, mqttEnabled, "Update failed: unable to prepare storage");
     http.end();
     return false;
   }
@@ -156,7 +156,7 @@ inline bool downloadAndInstall(PubSubClient& mqtt, bool mqttEnabled,
     if (Update.write(buffer, count) != count) {
       Update.abort();
       mbedtls_sha256_free(&sha);
-      publishState(mqtt, mqttEnabled, "ERROR: flash write failed");
+      publishState(mqtt, mqttEnabled, "Update failed: flash write");
       http.end();
       return false;
     }
@@ -174,17 +174,17 @@ inline bool downloadAndInstall(PubSubClient& mqtt, bool mqttEnabled,
   wantedSha.toLowerCase();
   if (!wantedSha.isEmpty() && actualSha != wantedSha) {
     Update.abort();
-    publishState(mqtt, mqttEnabled, "ERROR: sha mismatch");
+    publishState(mqtt, mqttEnabled, "Update failed: verification mismatch");
     return false;
   }
 
   if (!Update.end(true)) {
     Update.printError(Serial);
-    publishState(mqtt, mqttEnabled, "ERROR: OTA finalize failed");
+    publishState(mqtt, mqttEnabled, "Update failed: finalization");
     return false;
   }
 
-  publishState(mqtt, mqttEnabled, "UPDATING: rebooting");
+  publishState(mqtt, mqttEnabled, "Updating... restarting");
   delay(500);
   ESP.restart();
   return true;
@@ -201,8 +201,9 @@ inline void queueUpdate(const String& version, const String& url,
 
 inline void check(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall,
                   bool force = false) {
+  publishState(mqtt, mqttEnabled, "Checking...");
   if (WiFi.status() != WL_CONNECTED) {
-    publishState(mqtt, mqttEnabled, "ERROR: not connected");
+    publishState(mqtt, mqttEnabled, "Unable to check: not connected");
     return;
   }
 
@@ -211,13 +212,13 @@ inline void check(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall,
   HTTPClient http;
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   if (!http.begin(client, manifestUrl())) {
-    publishState(mqtt, mqttEnabled, "ERROR: manifest request init");
+    publishState(mqtt, mqttEnabled, "Unable to check: request initialization");
     return;
   }
 
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
-    publishState(mqtt, mqttEnabled, String("ERROR: manifest HTTP ") + status);
+    publishState(mqtt, mqttEnabled, String("Unable to check: manifest HTTP ") + status);
     http.end();
     return;
   }
@@ -230,13 +231,13 @@ inline void check(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall,
   DeserializationError error = deserializeJson(document, http.getStream());
   http.end();
   if (error) {
-    publishState(mqtt, mqttEnabled, "ERROR: manifest parse");
+    publishState(mqtt, mqttEnabled, "Unable to check: invalid manifest");
     return;
   }
 
   JsonObject entry = document["firmware"][DEVICE_TYPE];
   if (entry.isNull()) {
-    publishState(mqtt, mqttEnabled, "ERROR: no manifest entry");
+    publishState(mqtt, mqttEnabled, "Unable to check: firmware not listed");
     return;
   }
 
@@ -249,29 +250,29 @@ inline void check(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall,
 
   if (version.isEmpty() || target.isEmpty() || url.isEmpty() ||
       sha256.isEmpty() || size == 0) {
-    publishState(mqtt, mqttEnabled, "ERROR: malformed manifest entry");
+    publishState(mqtt, mqttEnabled, "Unable to check: incomplete manifest");
     return;
   }
   if (target != HARDWARE_TARGET) {
-    publishState(mqtt, mqttEnabled, "ERROR: incompatible target");
+    publishState(mqtt, mqttEnabled, "Unable to check: incompatible target");
     return;
   }
   if (HARDWARE_REVISION < minimumHardware) {
-    publishState(mqtt, mqttEnabled, "ERROR: incompatible hardware");
+    publishState(mqtt, mqttEnabled, "Unable to check: incompatible hardware");
     return;
   }
   if (compareVersions(String(FIRMWARE_VERSION), version) >= 0) {
     updateQueued = false;
-    publishState(mqtt, mqttEnabled, String("UP_TO_DATE: ") + FIRMWARE_VERSION);
+    publishState(mqtt, mqttEnabled, String("Up to date (v") + FIRMWARE_VERSION + ")");
     return;
   }
+  publishState(mqtt, mqttEnabled, String("Update available (v") + version + ")");
   if (!force && !safeToInstall) {
     queueUpdate(version, url, sha256, size);
-    publishState(mqtt, mqttEnabled, "DEFERRED: update available");
     return;
   }
 
-  publishState(mqtt, mqttEnabled, String("UPDATING: ") + version);
+  publishState(mqtt, mqttEnabled, String("Updating... (v") + version + ")");
   downloadAndInstall(mqtt, mqttEnabled, url, sha256, size);
 }
 
@@ -280,11 +281,7 @@ inline bool handleMqtt(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall,
   if (topic != commandTopic) return false;
   if (message == "CHECK") check(mqtt, mqttEnabled, safeToInstall, false);
   else if (message == "FORCE") check(mqtt, mqttEnabled, safeToInstall, true);
-  else if (message == "STATUS") {
-    String status = updateQueued ? String("QUEUED: ") + queuedVersion
-                                 : String("IDLE: ") + FIRMWARE_VERSION;
-    publishState(mqtt, mqttEnabled, status);
-  }
+  else if (message == "STATUS") publishState(mqtt, mqttEnabled, lastState);
   return true;
 }
 
@@ -301,12 +298,11 @@ inline void service(PubSubClient& mqtt, bool mqttEnabled, bool safeToInstall) {
   }
 
   if (!updateQueued || !safeToInstall || WiFi.status() != WL_CONNECTED) return;
-  publishState(mqtt, mqttEnabled, String("UPDATING: ") + queuedVersion);
+  publishState(mqtt, mqttEnabled, String("Updating... (v") + queuedVersion + ")");
   if (!downloadAndInstall(mqtt, mqttEnabled, queuedUrl, queuedSha, queuedSize)) {
     updateQueued = false;
-    publishState(mqtt, mqttEnabled, "ERROR: queued install failed");
+    publishState(mqtt, mqttEnabled, "Update failed: queued installation");
   }
 }
 
 }  // namespace DeviceOta
-
