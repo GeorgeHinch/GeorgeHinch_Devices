@@ -4,7 +4,8 @@ const PREVIEW_DEFAULTS = {
   configSsid: 'AUDIOSEN_123456789ABC', wifiSsid: 'Layout Wi-Fi',
   mqttEnabled: true, mqttHost: 'mqtt.layout.local', mqttPort: 1883,
   mqttUser: 'layout-controller', mqttPrefix: '/trains/',
-  sensorCount: 2, sensors: [{ present: true }, { present: true }], clearDelayMs: 800,
+  sensorCount: 2, sensors: [{ present: true, threshold: 200 }, { present: true, threshold: 200 }],
+  hysteresis: 50, samplePeriod: 40, clearDelayMs: 800,
   lightPattern: 0, defaultLightOnly: false,
   playerPresent: true, track: 1, volume: 25,
   manualButtonEnabled: true, manualButtonAction: 1,
@@ -87,7 +88,11 @@ function populate(config) {
   const sensorSummary = document.querySelector('#sensor-summary');
   sensorSummary.textContent = `${count} of 2 detected`;
   sensorSummary.className = `status ${count ? 'detected' : 'missing'}`;
+  setValue('thr1', config.sensors[0].threshold);
+  setValue('thr2', config.sensors[1].threshold);
   setValue('sensorCount', config.sensorCount);
+  setValue('hyst', config.hysteresis);
+  setValue('sample', config.samplePeriod);
   setValue('clearDelayMs', config.clearDelayMs);
   setValue('lightPattern', config.lightPattern);
   setChecked('defaultLightOnly', config.defaultLightOnly);

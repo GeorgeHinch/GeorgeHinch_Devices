@@ -28,7 +28,6 @@
 //   SER (GPIO1) -> DS, SRCLK (GPIO0) -> clock, RCLK (GPIO4) -> latch
 constexpr int SDA_PIN = 8;      // I2C SDA
 constexpr int SCL_PIN = 9;      // I2C SCL
-constexpr int I2C_SENSOR_RATE_MS = 40;
 
 constexpr int ENTRANCE_SENSOR_XSHUT_PIN = 7; // L0X1 XSHUT (or L0X1 only in 1-sensor mode)
 constexpr int EXIT_SENSOR_XSHUT_PIN = 6;     // L0X2 XSHUT
@@ -53,8 +52,9 @@ constexpr uint32_t SERIAL_SETUP_CMD_TIMEOUT_MS = 3000;
 // -----------------------------------------------------------------------------
 // Timing + behavior defaults
 // -----------------------------------------------------------------------------
-constexpr uint16_t DETECT_ON_MM = 200;
-constexpr uint16_t DETECT_OFF_MM = 250;
+constexpr uint16_t DEFAULT_OCCUPIED_THRESHOLD_MM = 200;
+constexpr uint16_t DEFAULT_OCCUPIED_HYSTERESIS_MM = 50;
+constexpr uint16_t DEFAULT_SENSOR_SAMPLE_PERIOD_MS = 40;
 constexpr uint8_t DETECT_CONFIRM_SAMPLES = 2;
 constexpr uint8_t CLEAR_CONFIRM_SAMPLES = 3;
 constexpr uint16_t FLASH_INTERVAL_MS = 180;
@@ -140,6 +140,10 @@ struct CrossingConfig {
   char mqttPrefix[24] = "/trains/";
 
   uint8_t sensorCount = 2;             // 1 or 2
+  uint16_t sensor1ThresholdMm = DEFAULT_OCCUPIED_THRESHOLD_MM;
+  uint16_t sensor2ThresholdMm = DEFAULT_OCCUPIED_THRESHOLD_MM;
+  uint16_t occupiedHysteresisMm = DEFAULT_OCCUPIED_HYSTERESIS_MM;
+  uint16_t sensorSamplePeriodMs = DEFAULT_SENSOR_SAMPLE_PERIOD_MS;
   uint16_t clearDelayMs = DEFAULT_CLEAR_DELAY_MS;
   uint8_t lightPattern = LIGHT_PATTERN_ALTERNATING;
 
@@ -675,6 +679,10 @@ void saveConfig() {
   prefs.putString("mqttPass", cfg.mqttPass);
   prefs.putString("mqttPref", cfg.mqttPrefix);
   prefs.putUChar("sens", cfg.sensorCount);
+  prefs.putUShort("thr1", cfg.sensor1ThresholdMm);
+  prefs.putUShort("thr2", cfg.sensor2ThresholdMm);
+  prefs.putUShort("hyst", cfg.occupiedHysteresisMm);
+  prefs.putUShort("sample", cfg.sensorSamplePeriodMs);
   prefs.putUInt("clrDelay", cfg.clearDelayMs);
   prefs.putUChar("lightPat", cfg.lightPattern);
   prefs.putUChar("track", cfg.track);
@@ -688,6 +696,10 @@ void saveConfig() {
 void loadConfig() {
   prefs.begin(CONFIG_NAMESPACE, true);
   cfg.sensorCount = constrain((uint8_t)prefs.getUChar("sens", cfg.sensorCount), 1, 2);
+  cfg.sensor1ThresholdMm = constrain((uint16_t)prefs.getUShort("thr1", cfg.sensor1ThresholdMm), 20, 2000);
+  cfg.sensor2ThresholdMm = constrain((uint16_t)prefs.getUShort("thr2", cfg.sensor2ThresholdMm), 20, 2000);
+  cfg.occupiedHysteresisMm = constrain((uint16_t)prefs.getUShort("hyst", cfg.occupiedHysteresisMm), 0, 500);
+  cfg.sensorSamplePeriodMs = constrain((uint16_t)prefs.getUShort("sample", cfg.sensorSamplePeriodMs), 30, 1000);
   cfg.clearDelayMs = constrain((uint16_t)prefs.getUInt("clrDelay", cfg.clearDelayMs), 0, 20000);
   cfg.lightPattern = (uint8_t)constrain((int)prefs.getUChar("lightPat", cfg.lightPattern), 0, 1);
   cfg.track = (uint8_t)constrain((int)prefs.getUChar("track", cfg.track), 1, 255);
@@ -739,8 +751,14 @@ void handlePortalConfig() {
   doc["mqttPrefix"] = cfg.mqttPrefix;
   doc["sensorCount"] = cfg.sensorCount;
   JsonArray sensors = doc["sensors"].to<JsonArray>();
-  sensors.add<JsonObject>()["present"] = sensor1Present;
-  sensors.add<JsonObject>()["present"] = sensor2Present;
+  JsonObject sensor1 = sensors.add<JsonObject>();
+  sensor1["present"] = sensor1Present;
+  sensor1["threshold"] = cfg.sensor1ThresholdMm;
+  JsonObject sensor2 = sensors.add<JsonObject>();
+  sensor2["present"] = sensor2Present;
+  sensor2["threshold"] = cfg.sensor2ThresholdMm;
+  doc["hysteresis"] = cfg.occupiedHysteresisMm;
+  doc["samplePeriod"] = cfg.sensorSamplePeriodMs;
   doc["clearDelayMs"] = cfg.clearDelayMs;
   doc["lightPattern"] = cfg.lightPattern;
   doc["defaultLightOnly"] = cfg.defaultLightOnly;
@@ -773,6 +791,18 @@ void handlePortalSave() {
   }
   if (webServer.hasArg("sensorCount")) {
     cfg.sensorCount = (uint8_t)constrain((int)webServer.arg("sensorCount").toInt(), 1, 2);
+  }
+  if (webServer.hasArg("thr1")) {
+    cfg.sensor1ThresholdMm = constrain((uint16_t)webServer.arg("thr1").toInt(), 20, 2000);
+  }
+  if (webServer.hasArg("thr2")) {
+    cfg.sensor2ThresholdMm = constrain((uint16_t)webServer.arg("thr2").toInt(), 20, 2000);
+  }
+  if (webServer.hasArg("hyst")) {
+    cfg.occupiedHysteresisMm = constrain((uint16_t)webServer.arg("hyst").toInt(), 0, 500);
+  }
+  if (webServer.hasArg("sample")) {
+    cfg.sensorSamplePeriodMs = constrain((uint16_t)webServer.arg("sample").toInt(), 30, 1000);
   }
   if (webServer.hasArg("clearDelayMs")) {
     cfg.clearDelayMs = constrain((uint16_t)webServer.arg("clearDelayMs").toInt(), 0, 20000);
@@ -1046,7 +1076,7 @@ void checkSerialForSetupCommand() {
 // -----------------------------------------------------------------------------
 // Sensor logic
 // -----------------------------------------------------------------------------
-void updateSensorState(DistanceSensor& sensor) {
+void updateSensorState(DistanceSensor& sensor, uint16_t occupiedThresholdMm) {
   sensor.triggeredThisCycle = false;
   sensor.previouslyOccupied = sensor.occupied;
 
@@ -1057,7 +1087,7 @@ void updateSensorState(DistanceSensor& sensor) {
     sensor.readingValid = true;
     sensor.distanceMm = parseRangeMm(measurement);
 
-    if (sensor.distanceMm <= DETECT_ON_MM) {
+    if (sensor.distanceMm <= occupiedThresholdMm) {
       sensor.clearSamples = 0;
       if (!sensor.occupied && sensor.detectSamples < DETECT_CONFIRM_SAMPLES) {
         sensor.detectSamples++;
@@ -1065,7 +1095,8 @@ void updateSensorState(DistanceSensor& sensor) {
       if (sensor.detectSamples >= DETECT_CONFIRM_SAMPLES) {
         sensor.occupied = true;
       }
-    } else if (sensor.distanceMm >= DETECT_OFF_MM) {
+    } else if (sensor.distanceMm >=
+               static_cast<uint32_t>(occupiedThresholdMm) + cfg.occupiedHysteresisMm) {
       sensor.detectSamples = 0;
       if (sensor.occupied && sensor.clearSamples < CLEAR_CONFIRM_SAMPLES) {
         sensor.clearSamples++;
@@ -1095,8 +1126,8 @@ void updateSensorState(DistanceSensor& sensor) {
 void updateAllSensors() {
   if (!sensor1Present && !sensor2Present) return;
 
-  if (sensor1Present) updateSensorState(entranceSensor);
-  if (sensor2Present) updateSensorState(exitSensor);
+  if (sensor1Present) updateSensorState(entranceSensor, cfg.sensor1ThresholdMm);
+  if (sensor2Present) updateSensorState(exitSensor, cfg.sensor2ThresholdMm);
 
   if (sensor1Present && entranceSensor.triggeredThisCycle) {
     sawEntranceEvent = true;
@@ -1479,7 +1510,7 @@ void loop() {
 
   // GPIO9 is shared by BOOT and I2C SCL. Pausing sensor traffic while BOOT is
   // held lets the three-second gesture complete without fighting the bus.
-  if (!setupButtonHeld && (now - lastSensorReadMs) >= I2C_SENSOR_RATE_MS) {
+  if (!setupButtonHeld && (now - lastSensorReadMs) >= cfg.sensorSamplePeriodMs) {
     lastSensorReadMs = now;
     updateAllSensors();
     evaluateCrossingLogic();

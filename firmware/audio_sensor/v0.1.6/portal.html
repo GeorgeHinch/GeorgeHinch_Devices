@@ -61,19 +61,24 @@
         <div class="grid player-grid">
           <fieldset class="panel" id="sensor1-panel">
             <legend>Sensor 1 <span class="status" id="sensor1-status"></span></legend>
-            <small>Entrance sensor &middot; I2C address 0x30</small>
+            <label>Occupied threshold (mm)<input type="number" name="thr1" id="thr1" min="20" max="2000"></label>
+            <small>Entrance sensor &middot; I2C address 0x2A</small>
           </fieldset>
           <fieldset class="panel" id="sensor2-panel">
             <legend>Sensor 2 <span class="status" id="sensor2-status"></span></legend>
-            <small>Exit sensor &middot; I2C address 0x31</small>
+            <label>Occupied threshold (mm)<input type="number" name="thr2" id="thr2" min="20" max="2000"></label>
+            <small>Exit sensor &middot; I2C address 0x2B</small>
           </fieldset>
         </div>
         <div class="grid">
           <label>Configured sensor count
             <select name="sensorCount" id="sensorCount"><option value="1">1 sensor</option><option value="2">2 sensors</option></select>
           </label>
+          <label>Hysteresis (mm)<input type="number" name="hyst" id="hyst" min="0" max="500"></label>
+          <label>Sample period (ms)<input type="number" name="sample" id="sample" min="30" max="1000"></label>
           <label>Clear hold time (ms)<input type="number" name="clearDelayMs" id="clearDelayMs" min="0" max="20000" step="50"></label>
         </div>
+        <small>Thresholds determine when each sensor reports occupied. Sensor availability is checked during startup; restart after plugging in or removing a module.</small>
       </section>
 
       <section class="card">
