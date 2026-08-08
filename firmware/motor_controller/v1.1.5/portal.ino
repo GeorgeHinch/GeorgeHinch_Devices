@@ -104,7 +104,7 @@ String renderConfigPage(const char* notice = nullptr) {
             "<div class='grid' style='margin-top:15px'><label>Network name (SSID)"
             "<input name='wifi_ssid' maxlength='32' value='");
   page += htmlEscape(settings.wifiSsid);
-  page += F("'></label><label>Wi-Fi password<input type='password' name='wifi_password' maxlength='64' placeholder='Leave blank to keep current'></label>"
+  page += F("'></label><label>Password<input type='password' name='wifi_password' maxlength='64' placeholder='Leave blank to keep current'></label>"
             "</div></section>"
             "<section class='card'><h2>MQTT and JMRI</h2><div class='grid'><label>MQTT broker"
             "<input name='mqtt_broker' maxlength='127' value='");
