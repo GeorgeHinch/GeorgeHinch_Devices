@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'audio_sensor/v*'
+      - 'motor_controller/v*'
+      - 'triple_audio_player/v*'
 
 permissions:
   contents: write
@@ -21,14 +23,36 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          version="${tag#audio_sensor/v}"
+          device="${tag%%/v*}"
+          version="${tag#*/v}"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 
-          release="firmware/audio_sensor/v${version}"
-          sketch="$(find "$release" -maxdepth 1 -type f -name '*.ino' -print -quit)"
-          test -n "$sketch"
-          expected_sketch="audio_sensor_${version//./_}.ino"
-          test "$(basename "$sketch")" = "$expected_sketch"
+          case "$device" in
+            audio_sensor)
+              manifest_type="audio-sensor"
+              display_name="Audio Sensor"
+              hardware_revision="2"
+              ;;
+            motor_controller)
+              manifest_type="motor-controller"
+              display_name="Motor Controller"
+              hardware_revision="1"
+              ;;
+            triple_audio_player)
+              manifest_type="triple-audio-player"
+              display_name="Triple Audio Player"
+              hardware_revision="1"
+              ;;
+            *)
+              echo "Unsupported firmware device: $device" >&2
+              exit 1
+              ;;
+          esac
+
+          release="firmware/${device}/v${version}"
+          expected_sketch="${device}_${version//./_}.ino"
+          sketch="$release/$expected_sketch"
+          test -f "$sketch"
           binary="$release/${expected_sketch%.ino}.bin"
           test -f "$binary"
           test -f "$release/BUILD_INFO.md"
@@ -37,6 +61,10 @@ jobs:
           grep -qi "$hash" "$release/BUILD_INFO.md"
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "device=$device" >> "$GITHUB_OUTPUT"
+          echo "manifest_type=$manifest_type" >> "$GITHUB_OUTPUT"
+          echo "display_name=$display_name" >> "$GITHUB_OUTPUT"
+          echo "hardware_revision=$hardware_revision" >> "$GITHUB_OUTPUT"
           echo "release=$release" >> "$GITHUB_OUTPUT"
           echo "binary=$binary" >> "$GITHUB_OUTPUT"
 
@@ -45,6 +73,9 @@ jobs:
         env:
           RELEASE: ${{ steps.validate.outputs.release }}
           VERSION: ${{ steps.validate.outputs.version }}
+          DEVICE: ${{ steps.validate.outputs.device }}
+          MANIFEST_TYPE: ${{ steps.validate.outputs.manifest_type }}
+          HARDWARE_REVISION: ${{ steps.validate.outputs.hardware_revision }}
           BINARY: ${{ steps.validate.outputs.binary }}
         run: |
           set -euo pipefail
@@ -57,25 +88,27 @@ jobs:
             rm -f release-assets/base-manifest.json
           fi
           FIRMWARE_VERSION="$VERSION" \
-          DEVICE_TYPE="audio-sensor" \
+          DEVICE_TYPE="$MANIFEST_TYPE" \
           HARDWARE_TARGET="esp32-c3" \
-          MINIMUM_HARDWARE_REVISION="2" \
+          MINIMUM_HARDWARE_REVISION="$HARDWARE_REVISION" \
           BASE_MANIFEST=release-assets/base-manifest.json \
           ASSET_DIR=release-assets \
           python scripts/generate_manifest.py
           rm -f release-assets/base-manifest.json
           test -f release-assets/manifest.json
-          grep -q '"audio-sensor"' release-assets/manifest.json
-          zip -r "audio_sensor_v${VERSION}.zip" "$RELEASE"
+          grep -q "\"$MANIFEST_TYPE\"" release-assets/manifest.json
+          zip -r "${DEVICE}_v${VERSION}.zip" "$RELEASE"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.validate.outputs.version }}
+          DEVICE: ${{ steps.validate.outputs.device }}
+          DISPLAY_NAME: ${{ steps.validate.outputs.display_name }}
           BINARY: ${{ steps.validate.outputs.binary }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "audio_sensor_v${VERSION}.zip" \
+            "${DEVICE}_v${VERSION}.zip" \
             release-assets/* \
-            --title "Audio Sensor v${VERSION}" \
+            --title "${DISPLAY_NAME} v${VERSION}" \
             --generate-notes

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motor Controller</title>
+  <link rel="stylesheet" href="portal.css" data-portal-css>
+</head>
+<body>
+  <main class="wrap">
+    <header class="device-header">
+      <p class="eyebrow">Device configuration</p>
+      <div class="title-row">
+        <h1>Motor Controller</h1>
+        <div class="menu-wrap">
+          <button class="menu-trigger" id="menu-trigger" type="button" aria-label="More board options" aria-haspopup="menu" aria-controls="device-menu" aria-expanded="false">&#8942;</button>
+          <div class="overflow-menu" id="device-menu" role="menu" hidden>
+            <div class="menu-group">
+              <button type="button" role="menuitem" data-reset-action="wifi">Reset stored Wi-Fi</button>
+              <button type="button" role="menuitem" data-reset-action="mqtt">Reset stored MQTT</button>
+            </div>
+            <div class="menu-separator"></div>
+            <div class="menu-group">
+              <button class="danger-item" type="button" role="menuitem" data-reset-action="factory">Factory restore board</button>
+            </div>
+          </div>
+        </div>
+      </div>
+        <p class="sub"><span id="device-id">MOTORCON_123456789ABC</span> &middot; <span id="device-ip">192.168.4.1</span> &middot; firmware <span id="firmware-version">1.1.5</span></p>
+    </header>
+
+    <p class="notice hidden" id="notice" role="status"></p>
+
+    <form method="post" action="/save" id="settings-form">
+      <section class="card">
+        <h2>Wi-Fi</h2>
+        <small>If Wi-Fi cannot connect for 30 seconds, join the open <strong id="config-ssid">Loading&hellip;</strong> network and browse to 192.168.4.1. While the device is running, hold the onboard BOOT button for 3 seconds to open setup.</small>
+        <div class="grid">
+          <label>Network name (SSID)<input name="wifi_ssid" id="wifi_ssid" maxlength="32"></label>
+          <label>Password<input type="password" name="wifi_password" maxlength="64" placeholder="Leave blank to keep current"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>MQTT and JMRI</h2>
+        <label class="toggle"><input type="checkbox" name="mqtt_enabled" id="mqtt_enabled"><span>Enable MQTT</span></label>
+        <div class="grid">
+          <label>MQTT broker<input name="mqtt_broker" id="mqtt_broker" maxlength="127"></label>
+          <label>MQTT port<input type="number" name="mqtt_port" id="mqtt_port" min="1" max="65535"></label>
+          <label>MQTT username<input name="mqtt_user" id="mqtt_user" maxlength="64"></label>
+          <label>MQTT password<input type="password" name="mqtt_password" maxlength="64" placeholder="Leave blank to keep current"></label>
+          <label>JMRI channel root<input name="jmri_channel" id="jmri_channel" maxlength="64"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Motor groups</h2>
+        <label class="toggle"><input type="checkbox" name="linked" id="linked"><span>Link motor groups</span></label>
+        <small>When linked, Motor Group 2 uses Group 1's direction and speed.</small>
+        <div class="grid motor-grid">
+          <div class="panel">
+            <h3>Motor Group 1</h3>
+            <label>Direction
+              <select name="dir1" id="dir1"><option value="cw">Clockwise</option><option value="ccw">Counterclockwise</option></select>
+            </label>
+            <label>Speed (half-steps/second)<input type="number" name="speed1" id="speed1" min="50" max="1000"></label>
+          </div>
+          <div class="panel">
+            <h3>Motor Group 2</h3>
+            <label>Direction
+              <select name="dir2" id="dir2"><option value="cw">Clockwise</option><option value="ccw">Counterclockwise</option></select>
+            </label>
+            <label>Speed (half-steps/second)<input type="number" name="speed2" id="speed2" min="50" max="1000"></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Motor safety</h2>
+        <div class="grid">
+          <label class="toggle"><input type="checkbox" name="hold" id="hold"><span>Keep coils energized while stopped</span></label>
+          <label class="toggle"><input type="checkbox" name="stoploss" id="stoploss"><span>Stop motors if MQTT disconnects</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><h2>Distance sensors</h2><p>Occupancy thresholds and hardware availability</p></div>
+          <span class="status" id="sensor-summary"></span>
+        </div>
+        <div class="grid motor-grid">
+          <div class="panel">
+            <h3>Sensor 1 <span class="status" id="sensor1-status"></span></h3>
+            <label>Occupied threshold (mm)<input type="number" name="thr1" id="thr1" min="20" max="2000"></label>
+            <small>I2C address 0x30</small>
+          </div>
+          <div class="panel">
+            <h3>Sensor 2 <span class="status" id="sensor2-status"></span></h3>
+            <label>Occupied threshold (mm)<input type="number" name="thr2" id="thr2" min="20" max="2000"></label>
+            <small>I2C address 0x31</small>
+          </div>
+          <label>Hysteresis (mm)<input type="number" name="hyst" id="hyst" min="0" max="500"></label>
+          <label>Sample period (ms)<input type="number" name="sample" id="sample" min="30" max="1000"></label>
+        </div>
+        <small>Sensor availability is checked during startup. Restart after plugging in or removing a module.</small>
+      </section>
+
+      <section class="card">
+        <h2>Sensor action</h2>
+        <div class="grid">
+          <label>Action
+            <select name="sensormode" id="sensormode">
+              <option value="0">Disabled (Default)</option>
+              <option value="1" id="timed-option">Any Sensor (Time-based)</option>
+              <option value="2" id="enter-exit-option">Enter-Exit Sensor</option>
+            </select>
+          </label>
+          <label id="sensor-target-field" hidden>Motor target
+            <select name="sensortarget" id="sensortarget"><option value="0">Both Motor Groups</option><option value="1">Motor Group 1</option><option value="2">Motor Group 2</option></select>
+          </label>
+          <label id="sensor-time-field" hidden>Run time (seconds)<input type="number" name="sensortime" id="sensortime" min="1" max="3600"></label>
+          <label id="sensor-clear-field" hidden>Clear hold time (ms)<input type="number" name="sensorclear" id="sensorclear" min="0" max="20000"></label>
+        </div>
+        <small id="sensor-action-help" hidden></small>
+      </section>
+
+      <section class="card">
+        <h2>External Button</h2>
+        <label class="toggle"><input type="checkbox" name="begenabled" id="begenabled"><span>Enable external button</span></label>
+        <div class="grid" id="external-button-settings" hidden>
+          <label>Motor target
+            <select name="begaction" id="begaction">
+              <option value="0" hidden>Both Motor Groups</option><option value="1">Both Motor Groups</option>
+              <option value="2">Motor Group 1</option><option value="3">Motor Group 2</option>
+            </select>
+          </label>
+          <label>Run time (seconds)<input type="number" name="begtime" id="begtime" min="1" max="3600"></label>
+        </div>
+        <small>The board indicator is on while the motors are stopped and off while either group runs. JMRI's global BEG Light OFF command always overrides it.</small>
+      </section>
+
+      <button class="save" type="submit">Save and restart</button>
+    </form>
+
+    <section class="card">
+      <form class="update-form" method="post" action="/ota" id="ota-form">
+        <div class="update-heading">
+          <h2>Update</h2>
+          <button class="secondary update-button update-icon-button" type="submit" name="action" value="STATUS" aria-label="Refresh update status" title="Refresh update status"><span aria-hidden="true">&#x21bb;</span></button>
+        </div>
+        <p><small>Update status: <strong id="ota-state">Not checked</strong></small></p>
+        <div class="action-row">
+          <button class="secondary update-button" type="submit" name="action" value="CHECK">Check now</button>
+          <button class="secondary update-button" type="submit" name="action" value="FORCE">Force update</button>
+        </div>
+      </form>
+    </section>
+
+    <dialog class="reset-dialog" id="reset-dialog" aria-labelledby="reset-title">
+      <div class="dialog-card">
+        <h2 id="reset-title">Confirm reset</h2>
+        <p id="reset-message"></p>
+        <p class="dialog-error hidden" id="reset-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="secondary" id="cancel-reset" type="button">Cancel</button>
+          <button class="confirm" id="confirm-reset" type="button">Confirm reset</button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+  <script src="portal.js" data-portal-js></script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Sensor</title>
+  <link rel="stylesheet" href="portal.css" data-portal-css>
+</head>
+<body>
+  <main class="wrap">
+    <header class="device-header">
+      <p class="eyebrow">Device configuration</p>
+      <div class="title-row">
+        <h1>Audio Sensor</h1>
+        <div class="menu-wrap">
+          <button class="menu-trigger" id="menu-trigger" type="button" aria-label="More board options" aria-haspopup="menu" aria-controls="device-menu" aria-expanded="false">&#8942;</button>
+          <div class="overflow-menu" id="device-menu" role="menu" hidden>
+            <div class="menu-group">
+              <button type="button" role="menuitem" data-reset-action="wifi">Reset stored Wi-Fi</button>
+              <button type="button" role="menuitem" data-reset-action="mqtt">Reset stored MQTT</button>
+            </div>
+            <div class="menu-separator"></div>
+            <div class="menu-group">
+              <button class="danger-item" type="button" role="menuitem" data-reset-action="factory">Factory restore board</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="sub"><span id="device-id">AUDIOSEN_123456789ABC</span> &middot; <span id="device-ip">192.168.4.1</span> &middot; firmware <span id="firmware-version">0.1.6</span></p>
+    </header>
+
+    <p class="notice hidden" id="notice" role="status"></p>
+
+    <form method="post" action="/save" id="settings-form">
+      <section class="card">
+        <h2>Wi-Fi</h2>
+        <small>If Wi-Fi cannot connect, join the open <strong id="config-ssid">Loading&hellip;</strong> network and browse to 192.168.4.1. While the device is running, hold the onboard BOOT button for 3 seconds to open setup.</small>
+        <div class="grid">
+          <label>Network name (SSID)<input type="text" name="wifiSsid" id="wifiSsid" maxlength="32" autocomplete="off"></label>
+          <label>Password<input type="password" name="wifiPass" id="wifiPass" maxlength="64" placeholder="Leave blank to keep saved password" autocomplete="new-password"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>MQTT and JMRI</h2>
+        <label class="toggle"><input type="checkbox" name="mqttEnabled" id="mqttEnabled"><span>Enable MQTT</span></label>
+        <div class="grid" id="mqtt-settings">
+          <label>MQTT broker<input type="text" name="mqttHost" id="mqttHost" maxlength="63" placeholder="192.168.1.10 or mqtt.layout.local"></label>
+          <label>MQTT port<input type="number" name="mqttPort" id="mqttPort" min="1" max="65535"></label>
+          <label>MQTT username<input type="text" name="mqttUser" id="mqttUser" maxlength="32" autocomplete="off"></label>
+          <label>MQTT password<input type="password" name="mqttPass" id="mqttPass" maxlength="32" placeholder="Leave blank to keep saved password" autocomplete="new-password"></label>
+          <label>JMRI topic prefix<input type="text" name="mqttPrefix" id="mqttPrefix" maxlength="23" placeholder="/trains/"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><h2>Distance sensors</h2><p>One or two VL53L0X modules trigger the washing sequence.</p></div>
+          <span class="status" id="sensor-summary"></span>
+        </div>
+        <div class="grid player-grid">
+          <fieldset class="panel" id="sensor1-panel">
+            <legend>Sensor 1 <span class="status" id="sensor1-status"></span></legend>
+            <small>Entrance sensor &middot; I2C address 0x2A</small>
+            <small id="sensor1-reading"></small>
+            <small id="sensor1-calibration"></small>
+            <small id="sensor1-assumption"></small>
+            <div class="action-row"><button class="secondary action" type="submit" formaction="/calibrate" formmethod="post" name="sensor" value="1" data-calibrate>Calibrate sensor</button></div>
+          </fieldset>
+          <fieldset class="panel" id="sensor2-panel">
+            <legend>Sensor 2 <span class="status" id="sensor2-status"></span></legend>
+            <small>Exit sensor &middot; I2C address 0x2B</small>
+            <small id="sensor2-reading"></small>
+            <small id="sensor2-calibration"></small>
+            <small id="sensor2-assumption"></small>
+            <div class="action-row"><button class="secondary action" type="submit" formaction="/calibrate" formmethod="post" name="sensor" value="2" data-calibrate>Calibrate sensor</button></div>
+          </fieldset>
+        </div>
+        <small>Automatic calibration uses 25 stable clear-track readings to set each occupied threshold. Leave the track clear when calibrating. Sensor availability is checked during startup; restart after plugging in or removing a module.</small>
+      </section>
+
+      <section class="card">
+        <h2>Sensor Trigger</h2>
+        <label class="toggle"><input type="checkbox" name="sensorTriggerEnabled" id="sensorTriggerEnabled"><span>Enable sensor trigger</span></label>
+        <div class="grid" id="sensor-trigger-settings" hidden>
+          <label>Trigger
+            <select name="sensorTriggerMode" id="sensorTriggerMode">
+              <option value="1" id="timed-option">Any Sensor (Time-Based)</option>
+              <option value="2" id="enter-exit-option">Enter-Exit Sensor</option>
+            </select>
+          </label>
+          <label id="sensor-time-field" hidden>Run time (seconds)<input type="number" name="sensorTriggerRunSeconds" id="sensorTriggerRunSeconds" min="1" max="3600"></label>
+          <label id="sensor-clear-field" hidden>Clear hold time (ms)<input type="number" name="sensorClearHoldMs" id="sensorClearHoldMs" min="0" max="20000"></label>
+        </div>
+        <small id="sensor-trigger-help" hidden></small>
+      </section>
+
+      <section class="card">
+        <h2>Outputs</h2>
+        <div class="grid">
+          <label>Light pattern
+            <select name="lightPattern" id="lightPattern"><option value="0">Alternating</option><option value="1">Strobe together</option></select>
+          </label>
+          <label class="toggle"><input type="checkbox" name="defaultLightOnly" id="defaultLightOnly"><span>Light-only for sensor-triggered events</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><h2>Audio playback</h2><p>One DFPlayer Mini provides the washing-station sound.</p></div>
+          <span class="status" id="player-status"></span>
+        </div>
+        <div class="grid">
+          <label>Track (1–255)<input type="number" name="track" id="track" min="1" max="255"></label>
+          <label>Volume (0–30)<input type="number" name="volume" id="volume" min="0" max="30"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>External Button</h2>
+        <label class="toggle"><input type="checkbox" name="manualButtonEnabled" id="manualButtonEnabled"><span>Enable external button</span></label>
+        <div class="grid" id="external-button-settings" hidden>
+          <label>Run time (seconds)<input type="number" name="manualButtonRunSeconds" id="manualButtonRunSeconds" min="1" max="3600"></label>
+        </div>
+      </section>
+
+      <button class="save" type="submit">Save and restart</button>
+    </form>
+
+    <section class="card">
+      <form class="update-form" method="post" action="/ota" id="ota-form">
+        <div class="update-heading">
+          <h2>Update</h2>
+          <button class="secondary update-button update-icon-button" type="submit" name="action" value="STATUS" aria-label="Refresh update status" title="Refresh update status"><span aria-hidden="true">&#x21bb;</span></button>
+        </div>
+        <p><small>Update status: <strong id="ota-state">Not checked</strong></small></p>
+        <div class="action-row">
+          <button class="secondary update-button" type="submit" name="action" value="CHECK">Check now</button>
+          <button class="secondary update-button" type="submit" name="action" value="FORCE">Force update</button>
+        </div>
+      </form>
+    </section>
+
+    <dialog class="reset-dialog" id="reset-dialog" aria-labelledby="reset-title">
+      <div class="dialog-card">
+        <h2 id="reset-title">Confirm reset</h2>
+        <p id="reset-message"></p>
+        <p class="dialog-error hidden" id="reset-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="secondary" id="cancel-reset" type="button">Cancel</button>
+          <button class="confirm" id="confirm-reset" type="button">Confirm reset</button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+  <script src="portal.js" data-portal-js></script>
+</body>
+</html>
