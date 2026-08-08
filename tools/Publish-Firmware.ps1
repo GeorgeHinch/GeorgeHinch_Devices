@@ -4,7 +4,7 @@ param(
   [string]$DeviceType = 'audio_sensor',
   [Parameter(Mandatory)]
   [string]$Version,
-  [string]$Fqbn = 'esp32:esp32:esp32c3:CDCOnBoot=cdc',
+  [string]$Fqbn = 'esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=min_spiffs',
   [string]$Remote = 'origin',
   [switch]$Push
 )
@@ -42,26 +42,23 @@ if (-not (Test-Path -LiteralPath $releaseRoot)) {
   throw "Release folder not found: $releaseRoot. Create it with New-FirmwareRelease.ps1 first."
 }
 
-$sketchFiles = @(Get-ChildItem -LiteralPath $releaseRoot -File -Filter '*.ino')
-if ($sketchFiles.Count -ne 1) {
-  throw "Expected exactly one sketch directly in $releaseRoot; found $($sketchFiles.Count)."
-}
-
-$sketch = $sketchFiles[0]
-$artifactStem = $sketch.BaseName
 $expectedStem = "${DeviceType}_$($Version -replace '\.', '_')"
-if ($artifactStem -ne $expectedStem) {
-  throw "Sketch must be named $expectedStem.ino; found $($sketch.Name)."
+$sketchFiles = @(Get-ChildItem -LiteralPath $releaseRoot -File -Filter '*.ino')
+$mainSketches = @($sketchFiles | Where-Object { $_.BaseName -eq $expectedStem })
+if ($mainSketches.Count -ne 1) {
+  throw "Expected one main sketch named $expectedStem.ino; found $($mainSketches.Count)."
 }
+$sketch = $mainSketches[0]
+$artifactStem = $sketch.BaseName
 
 # Arduino requires the temporary sketch folder and its main .ino file to have
 # the same name. The release folder remains flat; this staging copy is temporary.
-$tempRoot = Join-Path ([IO.Path]::GetTempPath()) "audio-sensor-firmware-build\$DeviceType\v$Version"
+$tempRoot = Join-Path ([IO.Path]::GetTempPath()) "device-firmware-build\$DeviceType\v$Version"
 if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
 $tempSketchDir = Join-Path $tempRoot $artifactStem
 $tempBuildPath = Join-Path $tempRoot 'build'
 New-Item -ItemType Directory -Path $tempSketchDir -Force | Out-Null
-Copy-Item -LiteralPath $sketch.FullName -Destination (Join-Path $tempSketchDir $sketch.Name)
+Get-ChildItem -LiteralPath $releaseRoot -File -Filter '*.ino' | Copy-Item -Destination $tempSketchDir
 Get-ChildItem -LiteralPath $releaseRoot -File -Filter '*.h' | Copy-Item -Destination $tempSketchDir
 
 $arduinoCli = (Get-Command arduino-cli -ErrorAction SilentlyContinue).Source

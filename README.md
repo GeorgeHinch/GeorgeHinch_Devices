@@ -14,13 +14,13 @@ GitHub Releases-based OTA firmware distribution for ESP32 layout controllers.
 
 ## Update flow
 
-1. A version tag such as `v0.1.1` is pushed.
-2. GitHub Actions builds each firmware environment.
-3. The workflow creates SHA-256 hashes and `manifest.json`.
+1. A device/version tag such as `motor_controller/v1.1.5` is pushed.
+2. GitHub Actions validates the clean-built binary and recorded SHA-256 hash.
+3. The workflow updates `manifest.json` for that device type.
 4. A GitHub Release is published with the firmware and manifest.
 5. Devices read:
 
-   `https://github.com/GeorgeHinch/esp32-github-ota/releases/latest/download/manifest.json`
+   `https://github.com/GeorgeHinch/GeorgeHinch_Devices/releases/latest/download/manifest.json`
 
 6. A compatible device downloads its `.bin`, validates its SHA-256 hash, writes the inactive OTA partition, and reboots.
 
@@ -35,7 +35,7 @@ GitHub Releases-based OTA firmware distribution for ESP32 layout controllers.
 pio run -e crossing-controller -t upload
 ```
 
-The first USB flash must use a partition table that includes OTA application slots. The standard ESP32 Arduino partition layout normally does; verify the selected board and partition configuration before deployment.
+The current ESP32-C3 releases use Arduino's **Minimal SPIFFS (1.9MB APP with OTA/128KB SPIFFS)** partition scheme. The first USB flash must use that partition layout so later OTA updates have matching application slots. These firmwares store settings in NVS and do not use SPIFFS.
 
 ## Publishing an update
 
@@ -89,9 +89,9 @@ For operating model trains, do not install automatically merely because an updat
 
 The included firmware is a working OTA foundation. Device-specific crossing, ToF, RFID, MQTT, and safe-state logic should be integrated into separate PlatformIO environments or source modules.
 
-## Audio Sensor firmware
+## Device firmware releases
 
-The Audio Sensor firmware is maintained under `firmware/audio_sensor/`. Each release is self-contained in a version folder, for example:
+Each firmware release is self-contained in a version folder. Current device folders are `audio_sensor`, `motor_controller`, and `triple_audio_player`.
 
 ```text
 firmware/audio_sensor/v0.1.5/
@@ -108,4 +108,6 @@ Create and publish the next patch release from a Windows development machine wit
 .\tools\Publish-Firmware.ps1 -DeviceType audio_sensor -Version 0.1.6 -Push
 ```
 
-The publisher performs a clean compile, records the binary hash, commits and tags the release, and pushes it to GitHub. The `audio_sensor/v*` tag then starts the dedicated GitHub Actions release workflow.
+The publisher performs a clean compile, records the binary hash, commits and tags the release, and pushes it to GitHub. Tags matching `audio_sensor/v*`, `motor_controller/v*`, or `triple_audio_player/v*` start the firmware release workflow.
+
+All three firmwares store their common settings in the `device_cfg` NVS namespace using the same keys: `wifiSsid`, `wifiPass`, `mqttEn`, `mqttHost`, `mqttPort`, `mqttUser`, `mqttPass`, and `mqttPref`. Device-specific settings remain separate within that namespace.

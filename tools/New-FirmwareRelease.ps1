@@ -60,11 +60,12 @@ Get-ChildItem -LiteralPath $target -Recurse -Directory |
   Remove-Item -Recurse -Force
 
 $sketchFiles = @(Get-ChildItem -LiteralPath $target -File -Filter '*.ino')
-if ($sketchFiles.Count -ne 1) {
-  throw "Expected exactly one sketch directly in $target; found $($sketchFiles.Count)."
+$mainSketches = @($sketchFiles | Where-Object { $_.BaseName -like "${DeviceType}_*" })
+if ($mainSketches.Count -ne 1) {
+  throw "Expected exactly one ${DeviceType}_*.ino main sketch directly in $target; found $($mainSketches.Count)."
 }
 
-$sketch = $sketchFiles[0]
+$sketch = $mainSketches[0]
 $artifactStem = "${DeviceType}_$($Version -replace '\.', '_')"
 $newSketchPath = Join-Path $target "$artifactStem.ino"
 if ($sketch.FullName -ne $newSketchPath) {
