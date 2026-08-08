@@ -1,5 +1,5 @@
 const PREVIEW_DEFAULTS = {
-  deviceId: 'ESP_1234ABCD', ip: '192.168.4.1', firmware: '2.1.5', connected: true,
+  deviceId: 'AUDIOPLAY_123456789ABC', ip: '192.168.4.1', firmware: '2.1.5', connected: true,
   globalBegEnabled: true, begAction: 0,
   players: [
     { present: true, mode: 'LOOP_TRACK', volume: 15, track: 1, folder: 1, muted: false },
@@ -63,7 +63,7 @@ function populate(config) {
   document.querySelector('#device-id').textContent = config.deviceId;
   document.querySelector('#device-ip').textContent = config.ip;
   document.querySelector('#firmware-version').textContent = config.firmware;
-  document.querySelector('#config-ssid').textContent = config.configSsid || `TripleAudio-${config.deviceId.slice(-4)}`;
+  document.querySelector('#config-ssid').textContent = config.configSsid || config.deviceId;
   config.players.forEach(setPlayer);
   const count = config.players.filter((player) => player.present).length;
   const summary = document.querySelector('#player-summary');

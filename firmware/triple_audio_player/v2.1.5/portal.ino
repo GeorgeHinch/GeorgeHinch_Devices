@@ -9,8 +9,7 @@ bool configServerStarted = false;
 char configApName[33] = "";
 
 void updateConfigAccessPointName() {
-  const char* suffix = strlen(deviceId) >= 4 ? deviceId + strlen(deviceId) - 4 : deviceId;
-  snprintf(configApName, sizeof(configApName), "TripleAudio-%s", suffix);
+  snprintf(configApName, sizeof(configApName), "%s", deviceId);
 }
 
 int boundedArgument(const char* name, int current, int minimum, int maximum) {

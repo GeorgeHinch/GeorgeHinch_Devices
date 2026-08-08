@@ -142,7 +142,7 @@ struct PlayerState {
   char idTrack[16];
   char idFolder[16];
 
-  // JMRI full IDs (e.g. "ESP_AABBCCDD/P1_MUTE") — built at runtime
+  // JMRI full IDs (e.g. "AUDIOPLAY_AABBCCDDEEFF/P1_MUTE") — built at runtime
   char fullMute[40];
   char fullPlay[40];
   char fullPlaying[40];
@@ -182,7 +182,7 @@ Preferences  prefs;
 DeviceSettings settings;
 
 // Device identity
-char deviceId[16];   // "ESP_AABBCCDD"
+char deviceId[24];   // "AUDIOPLAY_AABBCCDDEEFF"
 char fullMac[18];    // "AA:BB:CC:DD:EE:FF"
 
 // Serial ports for DFPlayers (all SoftwareSerial)
@@ -210,7 +210,7 @@ const unsigned long DEBOUNCE_MS  = 50;
 
 // BEG light — JMRI IDs and name (report-only light)
 char begLocalId[8]  = "BEG";
-char begFullId[40];             // "ESP_AABBCCDD/BEG"  — built at runtime
+char begFullId[40];             // "AUDIOPLAY_AABBCCDDEEFF/BEG"  — built at runtime
 char begName[32]    = "";       // Cached user name from JMRI
 bool begLedState    = true;     // true = LED on (idle), false = LED off (playing)
 
@@ -219,15 +219,16 @@ bool begLedState    = true;     // true = LED on (idle), false = LED off (playin
 // ════════════════════════════════════════════════════════════════
 
 void buildDeviceId() {
-  uint8_t mac[6];
-  esp_efuse_mac_get_default(mac);
-  snprintf(deviceId, sizeof(deviceId), "ESP_%02X%02X%02X%02X",
-           mac[2], mac[3], mac[4], mac[5]);
+  const uint64_t mac = ESP.getEfuseMac();
+  snprintf(deviceId, sizeof(deviceId), "AUDIOPLAY_%02X%02X%02X%02X%02X%02X",
+           (uint8_t)mac, (uint8_t)(mac >> 8), (uint8_t)(mac >> 16),
+           (uint8_t)(mac >> 24), (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
   snprintf(fullMac, sizeof(fullMac), "%02X:%02X:%02X:%02X:%02X:%02X",
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+           (uint8_t)mac, (uint8_t)(mac >> 8), (uint8_t)(mac >> 16),
+           (uint8_t)(mac >> 24), (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
 }
 
-// Build the full JMRI ID: "ESP_AABBCCDD/P1_MUTE"
+// Build the full JMRI ID: "AUDIOPLAY_AABBCCDDEEFF/P1_MUTE"
 void buildFullId(char* dest, size_t len, const char* localId) {
   snprintf(dest, len, "%s/%s", deviceId, localId);
 }
@@ -512,7 +513,7 @@ void stopPlayback(int idx) {
 //  MQTT TOPIC BUILDERS
 // ════════════════════════════════════════════════════════════════
 
-// Build full topic: "/trains/track/turnout/ESP_AABBCCDD/P1_MUTE"
+// Build full topic: "/trains/track/turnout/AUDIOPLAY_AABBCCDDEEFF/P1_MUTE"
 String buildTopic(const char* prefix, const char* fullId) {
   String t = settings.jmriChannel;
   t += prefix;
@@ -680,7 +681,7 @@ void publishDiscovery() {
 // ════════════════════════════════════════════════════════════════
 
 void requestNames() {
-  // Build JSON: {"outputs":["ESP_AABBCCDD/P1_MUTE","ESP_AABBCCDD/P1_PLAY",...]}
+  // Build JSON: {"outputs":["AUDIOPLAY_AABBCCDDEEFF/P1_MUTE","AUDIOPLAY_AABBCCDDEEFF/P1_PLAY",...]}
   JsonDocument doc;
   JsonArray arr = doc["outputs"].to<JsonArray>();
 
@@ -1003,7 +1004,7 @@ void mqttConnect() {
   lastMqttRetry = millis();
 
   Serial.print("MQTT connecting...");
-  String clientId = String("esp32_") + deviceId;
+  String clientId(deviceId);
 
   bool ok;
   if (strlen(settings.mqttUser) > 0) {
