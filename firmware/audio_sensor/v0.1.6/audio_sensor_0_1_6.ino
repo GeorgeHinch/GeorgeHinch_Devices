@@ -196,7 +196,6 @@ uint32_t lastSensorReadMs = 0;
 
 uint32_t setupHoldStartMs = 0;
 bool setupBtnDown = false;
-
 uint32_t lastManualReadMs = 0;
 bool lastManualRaw = HIGH;
 bool lastManualStable = HIGH;
@@ -1254,25 +1253,6 @@ void evaluateCrossingLogic() {
   }
 }
 
-void checkSetupButton() {
-  const bool pressedPrimary = (digitalRead(PIN_SETUP_BUTTON) == LOW);
-  const bool pressed = pressedPrimary;
-  const uint32_t now = millis();
-
-  if (pressed && !setupBtnDown) {
-    setupBtnDown = true;
-    setupHoldStartMs = now;
-  } else if (!pressed && setupBtnDown) {
-    setupBtnDown = false;
-  } else if (pressed && setupBtnDown && (now - setupHoldStartMs >= SETUP_HOLD_MS)) {
-    Serial.println("Setup button held: entering portal");
-    enterSetupPortal("setup button hold");
-    // In case portal exits for some reason, keep running in local mode.
-    setupBtnDown = false;
-    setupHoldStartMs = now;
-  }
-}
-
 void checkManualButton() {
   if (PIN_MANUAL_BUTTON == SR_CLK_PIN || PIN_MANUAL_BUTTON == SR_SER_PIN || PIN_MANUAL_BUTTON == SR_LATCH_PIN) {
     return; // conflict with required shift-register control pins on this PCB
@@ -1311,6 +1291,26 @@ void checkManualButton() {
       }
     }
   }
+}
+
+bool checkSetupButton() {
+  const bool pressed = digitalRead(PIN_SETUP_BUTTON) == LOW;
+  const uint32_t now = millis();
+
+  if (!pressed) {
+    setupBtnDown = false;
+    return false;
+  }
+
+  if (!setupBtnDown) {
+    setupBtnDown = true;
+    setupHoldStartMs = now;
+  } else if (now - setupHoldStartMs >= SETUP_HOLD_MS) {
+    setupBtnDown = false;
+    Serial.println("BOOT held for 3 seconds: entering setup portal");
+    enterSetupPortal("BOOT button hold");
+  }
+  return true;
 }
 
 void setupMqtt() {
@@ -1396,13 +1396,14 @@ void setup() {
 
   Serial.printf("Device ID: %s\n", deviceId);
 
+  pinMode(PIN_SETUP_BUTTON, INPUT_PULLUP);
+
   if (PIN_MANUAL_BUTTON != SR_SER_PIN && PIN_MANUAL_BUTTON != SR_CLK_PIN && PIN_MANUAL_BUTTON != SR_LATCH_PIN) {
     pinMode(PIN_MANUAL_BUTTON, INPUT_PULLUP);
   } else if (cfg.manualButtonEnabled) {
     Serial.println("Manual button disabled: configured manual pin conflicts with shift-register control pins.");
     cfg.manualButtonEnabled = false;
   }
-  pinMode(PIN_SETUP_BUTTON, INPUT_PULLUP);
   // Fallback pull-ups for I2C bus in case external pull-ups are absent on mounted breakouts.
   pinMode(SDA_PIN, INPUT_PULLUP);
   pinMode(SCL_PIN, INPUT_PULLUP);
@@ -1460,6 +1461,8 @@ void loop() {
   }
 
   checkSerialForSetupCommand();
+  const bool setupButtonHeld = checkSetupButton();
+  if (portalActive) return;
 
   if (WiFi.status() == WL_CONNECTED && cfg.mqttEnabled) {
     connectMqttIfNeeded();
@@ -1477,14 +1480,15 @@ void loop() {
   }
   serviceQueuedOtaInstall();
 
-  if ((now - lastSensorReadMs) >= I2C_SENSOR_RATE_MS) {
+  // GPIO9 is shared by BOOT and I2C SCL. Pausing sensor traffic while BOOT is
+  // held lets the three-second gesture complete without fighting the bus.
+  if (!setupButtonHeld && (now - lastSensorReadMs) >= I2C_SENSOR_RATE_MS) {
     lastSensorReadMs = now;
     updateAllSensors();
     evaluateCrossingLogic();
   }
 
   checkManualButton();
-  checkSetupButton();
   updateFlashingLights();
   publishMqttState();
 
