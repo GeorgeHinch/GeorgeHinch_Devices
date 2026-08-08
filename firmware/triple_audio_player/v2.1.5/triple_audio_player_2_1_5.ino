@@ -31,7 +31,7 @@
  * (.available() / .readType()) rather than the BUSY pin.
  *
  * Pin safety (ESP32-C3 Super Mini):
- *   Avoid GPIO 8 (onboard LED / strapping) and GPIO 9 (BOOT button).
+ *   GPIO9 is the onboard BOOT button and opens setup after a 3-second hold.
  *
  * Dependencies:
  *   - PubSubClient (Nick O'Leary)
@@ -71,6 +71,7 @@
 // Button & BEG status LED
 #define PIN_BUTTON     0     // Active LOW with internal pull-up
 #define PIN_BEG_LED    1     // ON when idle (not playing), OFF when playing
+#define PIN_SETUP_BUTTON 9   // Onboard BOOT button, active LOW
 
 // ─── Defaults ───────────────────────────────────────────────────
 #define DEFAULT_VOLUME   15
@@ -207,6 +208,9 @@ bool          lastButtonReading  = HIGH;
 bool          debouncedButton    = HIGH;   // Debounced state
 unsigned long lastDebounceTime   = 0;
 const unsigned long DEBOUNCE_MS  = 50;
+bool          setupButtonDown    = false;
+unsigned long setupButtonStartMs = 0;
+const unsigned long SETUP_BUTTON_HOLD_MS = 3000;
 
 // BEG light — JMRI IDs and name (report-only light)
 char begLocalId[8]  = "BEG";
@@ -1187,6 +1191,28 @@ void readButton() {
   }
 }
 
+void serviceSetupButton() {
+  if (isConfigAccessPointActive()) {
+    setupButtonDown = false;
+    return;
+  }
+  const bool pressed = digitalRead(PIN_SETUP_BUTTON) == LOW;
+  if (!pressed) {
+    setupButtonDown = false;
+    return;
+  }
+
+  if (!setupButtonDown) {
+    setupButtonDown = true;
+    setupButtonStartMs = millis();
+  } else if (millis() - setupButtonStartMs >= SETUP_BUTTON_HOLD_MS) {
+    setupButtonDown = false;
+    for (int i = 0; i < 3; ++i) players[i].stopRequested = true;
+    Serial.println(F("BOOT held for 3 seconds: entering setup portal"));
+    startConfigAccessPoint();
+  }
+}
+
 // ════════════════════════════════════════════════════════════════
 //  SETUP
 // ════════════════════════════════════════════════════════════════
@@ -1212,12 +1238,13 @@ void setup() {
   // ── Button & BEG LED pins ──
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_BEG_LED, OUTPUT);
+  pinMode(PIN_SETUP_BUTTON, INPUT_PULLUP);
   digitalWrite(PIN_BEG_LED, HIGH);  // LED on at boot (idle)
 
   // ── Device and portal settings ──
   loadDeviceSettings();
   DeviceOta::begin(settings.jmriChannel, deviceId);
-  bool forceConfigPortal = digitalRead(PIN_BUTTON) == LOW || settings.wifiSsid[0] == '\0';
+  bool forceConfigPortal = settings.wifiSsid[0] == '\0';
   beginConfigPortal(forceConfigPortal);
 
   // ── Load NVS settings ──
@@ -1300,6 +1327,7 @@ void loop() {
 
   // Read button input
   readButton();
+  serviceSetupButton();
 
   // Execute play/stop/restart commands
   updatePlayback();

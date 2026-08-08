@@ -8,6 +8,10 @@ bool configApActive = false;
 bool configServerStarted = false;
 char configApName[33] = "";
 
+bool isConfigAccessPointActive() {
+  return configApActive;
+}
+
 void updateConfigAccessPointName() {
   snprintf(configApName, sizeof(configApName), "%s", deviceId);
 }
