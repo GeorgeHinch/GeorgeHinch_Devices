@@ -7,7 +7,7 @@ const PREVIEW_DEFAULTS = {
     { present: true, mode: 'LOOP_FOLDER', volume: 12, track: 1, folder: 2, muted: true }
   ],
   wifiSsid: 'Layout Wi-Fi', mqttEnabled: true, mqttBroker: 'mqtt.layout.local', mqttPort: 1883,
-  mqttUser: 'layout-controller', jmriChannel: '/trains/track/', otaState: 'Idle: 2.1.5'
+  mqttUser: 'layout-controller', jmriChannel: '/trains/track/', otaState: 'Up to date (v2.1.5)'
 };
 
 function previewConfig() {
