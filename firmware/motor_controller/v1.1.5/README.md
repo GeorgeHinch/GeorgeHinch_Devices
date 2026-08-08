@@ -63,8 +63,8 @@ the board has no home or limit switches.
 ## Wi-Fi configuration portal
 
 The configuration page is available at the controller's normal Wi-Fi IP address.
-If Wi-Fi cannot connect for 30 seconds, or the BEG button is held while powering
-on, the controller also creates a captive setup network with the same name as
+If Wi-Fi cannot connect for 30 seconds, or the onboard BOOT button is held for
+three seconds while the controller is running, it creates a captive setup network with the same name as
 the device ID, such as `MOTORCON_XXXXXXXXXXXX`. This temporary setup network is
 open, matching the other device firmware. The Wi-Fi password entered in the portal is only used
 when the controller joins the layout's normal network.

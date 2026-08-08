@@ -11,6 +11,10 @@ uint32_t configPortalBootMs = 0;
 uint32_t restartAtMs = 0;
 char configApSsid[33];
 
+bool isConfigAccessPointActive() {
+  return configApActive;
+}
+
 void updateConfigAccessPointSsid() {
   snprintf(configApSsid, sizeof(configApSsid), "%s", deviceId);
 }
@@ -96,7 +100,7 @@ String renderConfigPage(const char* notice = nullptr) {
             "<section class='card'><h2>Wi-Fi</h2>"
             "<small>If Wi-Fi cannot connect for 30 seconds, join the open <strong>");
   page += htmlEscape(configApSsid);
-  page += F("</strong> network and browse to 192.168.4.1. Hold BEG during startup to open it immediately.</small>"
+  page += F("</strong> network and browse to 192.168.4.1. While the device is running, hold the onboard BOOT button for 3 seconds to open setup.</small>"
             "<div class='grid' style='margin-top:15px'><label>Network name (SSID)"
             "<input name='wifi_ssid' maxlength='32' value='");
   page += htmlEscape(settings.wifiSsid);
@@ -439,10 +443,9 @@ void initializeConfigPortal() {
   configServerStarted = true;
   configPortalBootMs = millis();
 
-  const bool buttonHeld = digitalRead(PIN_BEG_BUTTON) == LOW;
   lastButtonReading = digitalRead(PIN_BEG_BUTTON);
   stableButtonState = lastButtonReading;
-  if (buttonHeld || settings.wifiSsid[0] == '\0') startConfigAccessPoint();
+  if (settings.wifiSsid[0] == '\0') startConfigAccessPoint();
 }
 
 void serviceConfigPortal() {

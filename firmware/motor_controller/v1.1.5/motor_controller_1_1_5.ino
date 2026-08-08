@@ -118,9 +118,11 @@ uint8_t shiftByte = 0;
 bool begLedState = false;
 bool lastButtonReading = HIGH;
 bool stableButtonState = HIGH;
+bool setupButtonDown = false;
 bool mqttWasConnected = false;
 bool namesReceived = false;
 uint32_t lastButtonChangeMs = 0;
+uint32_t setupButtonHoldStartMs = 0;
 uint32_t lastWiFiRetryMs = 0;
 uint32_t lastMqttRetryMs = 0;
 uint32_t lastNameRequestMs = 0;
@@ -913,6 +915,29 @@ void handleButton() {
   }
 }
 
+bool serviceSetupButton() {
+  const bool pressed = digitalRead(PIN_SETUP_BUTTON) == LOW;
+  if (isConfigAccessPointActive()) {
+    setupButtonDown = false;
+    return pressed;
+  }
+  if (!pressed) {
+    setupButtonDown = false;
+    return false;
+  }
+
+  if (!setupButtonDown) {
+    setupButtonDown = true;
+    setupButtonHoldStartMs = millis();
+    stopAllMotors(false);
+  } else if (millis() - setupButtonHoldStartMs >= SETUP_BUTTON_HOLD_MS) {
+    setupButtonDown = false;
+    Serial.println(F("BOOT held for 3 seconds: entering setup portal"));
+    startConfigAccessPoint();
+  }
+  return true;
+}
+
 void serviceBegButtonTimer() {
   if (!begButtonTimerActive || static_cast<int32_t>(millis() - begButtonStopAtMs) < 0) return;
 
@@ -1006,6 +1031,7 @@ void setupHardware() {
   pinMode(PIN_MOTOR2_LED, OUTPUT);
   pinMode(PIN_BEG_LED, OUTPUT);
   pinMode(PIN_BEG_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_SETUP_BUTTON, INPUT_PULLUP);
   refreshIndicatorLeds(false);
 }
 
@@ -1042,8 +1068,11 @@ void loop() {
   serviceMotors();
   handleButton();
   serviceBegButtonTimer();
-  serviceRangeSensors();
-  serviceSensorAutomation();
+  const bool setupButtonHeld = serviceSetupButton();
+  if (!setupButtonHeld) {
+    serviceRangeSensors();
+    serviceSensorAutomation();
+  }
   serviceConfigPortal();
   DeviceSerialSetup::service(settings.wifiSsid, sizeof(settings.wifiSsid),
                              settings.wifiPassword, sizeof(settings.wifiPassword),

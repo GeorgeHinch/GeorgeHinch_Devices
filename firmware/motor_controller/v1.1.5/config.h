@@ -14,7 +14,8 @@ constexpr uint8_t PIN_BEG_BUTTON = 3;    // Active low
 constexpr uint8_t PIN_BEG_LED    = 10;
 
 constexpr uint8_t PIN_I2C_SDA = 8;
-constexpr uint8_t PIN_I2C_SCL = 9;
+constexpr uint8_t PIN_SETUP_BUTTON = 9;  // Onboard BOOT; shared with I2C SCL
+constexpr uint8_t PIN_I2C_SCL = PIN_SETUP_BUTTON;
 constexpr uint8_t PIN_XSHUT_1 = 7;
 constexpr uint8_t PIN_XSHUT_2 = 6;
 
@@ -49,6 +50,7 @@ constexpr BegButtonAction DEFAULT_BEG_BUTTON_ACTION = BEG_BUTTON_DISABLED;
 constexpr bool DEFAULT_BEG_BUTTON_RUN_INDEFINITELY = true;
 constexpr uint16_t DEFAULT_BEG_BUTTON_RUN_SECONDS = 30;
 constexpr uint32_t BUTTON_DEBOUNCE_MS = 40;
+constexpr uint32_t SETUP_BUTTON_HOLD_MS = 3000;
 
 enum SensorControlMode : uint8_t {
   SENSOR_CONTROL_DISABLED = 0,
@@ -80,7 +82,7 @@ constexpr uint32_t SENSOR_HEARTBEAT_MS = 5000;
 
 // The configuration web server is always available on the station IP. A
 // captive setup access point starts if Wi-Fi is still unavailable after this
-// delay, or immediately when BEG is held during boot.
+// delay, or when the onboard BOOT button is held for three seconds while running.
 constexpr uint32_t CONFIG_PORTAL_FALLBACK_MS = 30000;
 
 constexpr uint32_t WIFI_RETRY_MS = 10000;
