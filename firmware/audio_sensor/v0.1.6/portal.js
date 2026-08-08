@@ -1,3 +1,4 @@
+/* DEVICE_EXCLUDE_START */
 const PREVIEW_DEFAULTS = {
   deviceId: 'AUDIOSEN_123456789ABC', ip: '192.168.4.1', firmware: '0.1.6',
   configSsid: 'AUDIOSEN_123456789ABC', wifiSsid: 'Layout Wi-Fi',
@@ -7,8 +8,7 @@ const PREVIEW_DEFAULTS = {
   lightPattern: 0, defaultLightOnly: false,
   playerPresent: true, track: 1, volume: 25,
   manualButtonEnabled: true, manualButtonAction: 1,
-  hardwareTarget: 'esp32-c3', hardwareVersion: 'v0.2',
-  otaSource: 'GeorgeHinch/GeorgeHinch_Devices', otaState: 'Idle: 0.1.6'
+  otaState: 'Idle: 0.1.6'
 };
 
 function isPreviewMode() {
@@ -24,7 +24,16 @@ function previewConfig() {
   if (scenario === 'mqtt-off') config.mqttEnabled = false;
   return config;
 }
+/* DEVICE_EXCLUDE_END */
 
+/* DEVICE_ONLY_START
+async function loadConfig() {
+  const response = await fetch('/api/config', { cache: 'no-store' });
+  if (!response.ok) throw new Error('Config unavailable');
+  return response.json();
+}
+DEVICE_ONLY_END */
+/* DEVICE_EXCLUDE_START */
 async function loadConfig() {
   if (isPreviewMode()) return previewConfig();
   try {
@@ -38,6 +47,7 @@ async function loadConfig() {
     return previewConfig();
   }
 }
+/* DEVICE_EXCLUDE_END */
 
 function setValue(id, value) { document.querySelector(`#${id}`).value = value; }
 function setChecked(id, value) { document.querySelector(`#${id}`).checked = Boolean(value); }
@@ -90,8 +100,6 @@ function populate(config) {
   document.querySelector('#volume').disabled = !config.playerPresent;
   setChecked('manualButtonEnabled', config.manualButtonEnabled);
   setValue('manualButtonAction', config.manualButtonAction);
-  document.querySelector('#hardware-target').textContent = `${config.hardwareTarget} / ${config.hardwareVersion}`;
-  document.querySelector('#ota-source').textContent = config.otaSource;
   document.querySelector('#ota-state').textContent = config.otaState;
   updateMqttUi();
   updateManualUi();
@@ -101,6 +109,7 @@ loadConfig().then(populate);
 document.querySelector('#mqttEnabled').addEventListener('change', updateMqttUi);
 document.querySelector('#manualButtonEnabled').addEventListener('change', updateManualUi);
 
+/* DEVICE_EXCLUDE_START */
 document.querySelector('#settings-form').addEventListener('submit', (event) => {
   if (!isPreviewMode()) return;
   event.preventDefault();
@@ -117,6 +126,7 @@ document.querySelector('#ota-form').addEventListener('submit', (event) => {
   notice.textContent = 'Preview only — no firmware update was requested.';
   notice.classList.remove('hidden');
 });
+/* DEVICE_EXCLUDE_END */
 
 const resetDefinitions = {
   wifi: { title: 'Reset stored Wi-Fi?', message: 'This clears the saved Wi-Fi network and restarts the board in setup mode.', confirm: 'Reset Wi-Fi' },
@@ -175,6 +185,7 @@ resetDialog.addEventListener('click', (event) => { if (event.target === resetDia
 
 confirmReset.addEventListener('click', async () => {
   if (!pendingResetAction) return;
+  /* DEVICE_EXCLUDE_START */
   if (isPreviewMode()) {
     resetDialog.close();
     const notice = document.querySelector('#notice');
@@ -182,6 +193,7 @@ confirmReset.addEventListener('click', async () => {
     notice.classList.remove('hidden');
     return;
   }
+  /* DEVICE_EXCLUDE_END */
   confirmReset.disabled = true;
   cancelReset.disabled = true;
   resetError.classList.add('hidden');

@@ -116,7 +116,7 @@ void configureStandardCaBundle(WiFiClientSecure& client) {
 constexpr uint16_t DEFAULT_MQTT_PORT = 1883;
 constexpr uint32_t MQTT_RETRY_MS = 5000;
 constexpr const char* DEFAULT_MQTT_PREFIX = "/trains/";
-constexpr const char* CONFIG_NAMESPACE = "cross_cfg";
+constexpr const char* CONFIG_NAMESPACE = "device_cfg";
 constexpr const char* CONFIG_VERSION_KEY = "cfgver";
 constexpr uint8_t CONFIG_VERSION = 1;
 
