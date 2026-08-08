@@ -84,21 +84,6 @@
       </section>
 
       <section class="card">
-        <h2>BEG button and status light</h2>
-        <div class="grid">
-          <label>BEG button action
-            <select name="begaction" id="begaction">
-              <option value="0">Disabled (Default)</option><option value="1">Both Motor Groups</option>
-              <option value="2">Motor Group 1</option><option value="3">Motor Group 2</option>
-            </select>
-          </label>
-          <label class="toggle"><input type="checkbox" name="begindef" id="begindef"><span>Run indefinitely</span></label>
-          <label>BEG run time (seconds)<input type="number" name="begtime" id="begtime" min="1" max="3600"></label>
-        </div>
-        <small>The BEG LED is on while the motors are stopped and off while either group runs. JMRI's global BEG Light OFF command always overrides it.</small>
-      </section>
-
-      <section class="card">
         <div class="section-heading">
           <div><h2>Distance sensors</h2><p>Occupancy thresholds and hardware availability</p></div>
           <span class="status" id="sensor-summary"></span>
@@ -136,6 +121,21 @@
           <label>Run time / safety timeout (seconds)<input type="number" name="sensortime" id="sensortime" min="1" max="3600"></label>
         </div>
         <small>Any Sensor starts or extends a timed run. Enter-Exit starts on the first sensor reached and stops on the other; the timer is its fail-safe.</small>
+      </section>
+
+      <section class="card">
+        <h2>BEG button and status light</h2>
+        <div class="grid">
+          <label>BEG button action
+            <select name="begaction" id="begaction">
+              <option value="0">Disabled (Default)</option><option value="1">Both Motor Groups</option>
+              <option value="2">Motor Group 1</option><option value="3">Motor Group 2</option>
+            </select>
+          </label>
+          <label class="toggle"><input type="checkbox" name="begindef" id="begindef"><span>Run indefinitely</span></label>
+          <label>BEG run time (seconds)<input type="number" name="begtime" id="begtime" min="1" max="3600"></label>
+        </div>
+        <small>The BEG LED is on while the motors are stopped and off while either group runs. JMRI's global BEG Light OFF command always overrides it.</small>
       </section>
 
       <button class="save" type="submit">Save and restart</button>
