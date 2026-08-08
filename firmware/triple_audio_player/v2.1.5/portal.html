@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triple Audio Player</title>
+  <link rel="stylesheet" href="portal.css" data-portal-css>
+</head>
+<body>
+  <main class="wrap">
+    <header class="device-header">
+      <p class="eyebrow">Device configuration</p>
+      <div class="title-row">
+        <h1>Triple Audio Player</h1>
+        <div class="menu-wrap">
+          <button class="menu-trigger" id="menu-trigger" type="button" aria-label="More board options" aria-haspopup="menu" aria-controls="device-menu" aria-expanded="false">&#8942;</button>
+          <div class="overflow-menu" id="device-menu" role="menu" hidden>
+            <div class="menu-group">
+              <button type="button" role="menuitem" data-reset-action="wifi">Reset stored Wi-Fi</button>
+              <button type="button" role="menuitem" data-reset-action="mqtt">Reset stored MQTT</button>
+            </div>
+            <div class="menu-separator"></div>
+            <div class="menu-group">
+              <button class="danger-item" type="button" role="menuitem" data-reset-action="factory">Factory restore board</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="sub"><span id="device-id">ESP_1234ABCD</span> &middot; <span id="device-ip">192.168.4.1</span> &middot; firmware <span id="firmware-version">2.1.5</span></p>
+    </header>
+
+    <p class="notice hidden" id="notice" role="status"></p>
+
+    <form method="post" action="/save" id="settings-form">
+      <section class="card">
+        <h2>Wi-Fi</h2>
+        <small>If Wi-Fi cannot connect for 30 seconds, join the open <strong id="config-ssid">Loading&hellip;</strong> network and browse to 192.168.4.1. Hold BEG during startup to open it immediately.</small>
+        <div class="grid">
+          <label>Wi-Fi name<input type="text" name="wifi_ssid" id="wifi_ssid" maxlength="32" autocomplete="off"></label>
+          <label>Wi-Fi password<input type="password" name="wifi_password" id="wifi_password" maxlength="64" placeholder="Leave blank to keep saved password" autocomplete="new-password"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>MQTT and JMRI</h2>
+        <label class="toggle"><input type="checkbox" name="mqtt_enabled" id="mqtt_enabled"><span>Enable MQTT/JMRI</span></label>
+        <div class="grid">
+          <label>MQTT broker<input type="text" name="mqtt_broker" id="mqtt_broker" maxlength="127" placeholder="192.168.1.10 or mqtt.layout.local"></label>
+          <label>MQTT port<input type="number" name="mqtt_port" id="mqtt_port" min="1" max="65535"></label>
+          <label>MQTT username<input type="text" name="mqtt_user" id="mqtt_user" maxlength="64" autocomplete="off"></label>
+          <label>MQTT password<input type="password" name="mqtt_password" id="mqtt_password" maxlength="64" placeholder="Leave blank to keep saved password" autocomplete="new-password"></label>
+          <label>JMRI channel root<input type="text" name="jmri_channel" id="jmri_channel" maxlength="64" placeholder="/trains/track/"></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div><h2>Audio players</h2><p>Settings are saved locally and remain controllable from JMRI.</p></div>
+          <span class="status" id="player-summary"></span>
+        </div>
+        <div class="grid player-grid">
+          <fieldset class="panel" id="player1-panel">
+            <legend>Player 1 <span class="status" id="player1-status"></span></legend>
+            <label>Mode
+              <select name="mode1" id="mode1"><option value="LOOP_TRACK">Loop track</option><option value="SINGLE">Single play</option><option value="LOOP_FOLDER">Loop folder</option></select>
+            </label>
+            <label>Volume (0–30)<input type="number" name="volume1" id="volume1" min="0" max="30"></label>
+            <label>Track (1–255)<input type="number" name="track1" id="track1" min="1" max="255"></label>
+            <label>Folder (1–99)<input type="number" name="folder1" id="folder1" min="1" max="99"></label>
+            <label class="toggle"><input type="checkbox" name="muted1" id="muted1"><span>Muted</span></label>
+          </fieldset>
+          <fieldset class="panel" id="player2-panel">
+            <legend>Player 2 <span class="status" id="player2-status"></span></legend>
+            <label>Mode
+              <select name="mode2" id="mode2"><option value="LOOP_TRACK">Loop track</option><option value="SINGLE">Single play</option><option value="LOOP_FOLDER">Loop folder</option></select>
+            </label>
+            <label>Volume (0–30)<input type="number" name="volume2" id="volume2" min="0" max="30"></label>
+            <label>Track (1–255)<input type="number" name="track2" id="track2" min="1" max="255"></label>
+            <label>Folder (1–99)<input type="number" name="folder2" id="folder2" min="1" max="99"></label>
+            <label class="toggle"><input type="checkbox" name="muted2" id="muted2"><span>Muted</span></label>
+          </fieldset>
+          <fieldset class="panel" id="player3-panel">
+            <legend>Player 3 <span class="status" id="player3-status"></span></legend>
+            <label>Mode
+              <select name="mode3" id="mode3"><option value="LOOP_TRACK">Loop track</option><option value="SINGLE">Single play</option><option value="LOOP_FOLDER">Loop folder</option></select>
+            </label>
+            <label>Volume (0–30)<input type="number" name="volume3" id="volume3" min="0" max="30"></label>
+            <label>Track (1–255)<input type="number" name="track3" id="track3" min="1" max="255"></label>
+            <label>Folder (1–99)<input type="number" name="folder3" id="folder3" min="1" max="99"></label>
+            <label class="toggle"><input type="checkbox" name="muted3" id="muted3"><span>Muted</span></label>
+          </fieldset>
+        </div>
+        <small>When a DFPlayer is not detected at startup, its controls are shown but disabled. JMRI can still update saved values after the module is restored and the controller restarts.</small>
+      </section>
+
+      <section class="card">
+        <h2>BEG button and status light</h2>
+        <div class="grid">
+          <label>Button action
+            <select name="begaction" id="begaction"><option value="0">Disabled (Default)</option><option value="1">Player 1</option><option value="2">Player 2</option><option value="3">Player 3</option></select>
+          </label>
+        </div>
+        <small>The BEG LED is on while all players are stopped and off while any player is running. JMRI's global BEG Light OFF command always overrides it.</small>
+      </section>
+
+      <button class="save" type="submit">Save and restart</button>
+    </form>
+
+    <section class="card">
+      <h2>Firmware and updates</h2>
+      <p><small>Update status: <strong id="ota-state">Idle</strong></small></p>
+      <form class="action-row" method="post" action="/ota" id="ota-form">
+        <button class="secondary" type="submit" name="action" value="CHECK">Check now</button>
+        <button class="secondary" type="submit" name="action" value="STATUS">Refresh status</button>
+        <button class="secondary" type="submit" name="action" value="FORCE">Force update</button>
+      </form>
+    </section>
+
+    <dialog class="reset-dialog" id="reset-dialog" aria-labelledby="reset-title">
+      <div class="dialog-card">
+        <h2 id="reset-title">Confirm reset</h2>
+        <p id="reset-message"></p>
+        <p class="dialog-error hidden" id="reset-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button class="secondary" id="cancel-reset" type="button">Cancel</button>
+          <button class="confirm" id="confirm-reset" type="button">Confirm reset</button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+  <script src="portal.js" data-portal-js></script>
+</body>
+</html>
