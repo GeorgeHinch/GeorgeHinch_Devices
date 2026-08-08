@@ -107,12 +107,16 @@
     </form>
 
     <section class="card">
-      <h2>Firmware and updates</h2>
-      <p><small>Update status: <strong id="ota-state">Idle</strong></small></p>
-      <form class="action-row" method="post" action="/ota" id="ota-form">
-        <button class="secondary" type="submit" name="action" value="CHECK">Check now</button>
-        <button class="secondary" type="submit" name="action" value="STATUS">Refresh status</button>
-        <button class="secondary" type="submit" name="action" value="FORCE">Force update</button>
+      <form class="update-form" method="post" action="/ota" id="ota-form">
+        <div class="update-heading">
+          <h2>Update</h2>
+          <button class="secondary update-button update-icon-button" type="submit" name="action" value="STATUS" aria-label="Refresh update status" title="Refresh update status"><span aria-hidden="true">&#x21bb;</span></button>
+        </div>
+        <p><small>Update status: <strong id="ota-state">Idle</strong></small></p>
+        <div class="action-row">
+          <button class="secondary update-button" type="submit" name="action" value="CHECK">Check now</button>
+          <button class="secondary update-button" type="submit" name="action" value="FORCE">Force update</button>
+        </div>
       </form>
     </section>
 
