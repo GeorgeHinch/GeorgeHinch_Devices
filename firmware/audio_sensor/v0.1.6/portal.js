@@ -8,7 +8,7 @@ const PREVIEW_DEFAULTS = {
   lightPattern: 0, defaultLightOnly: false,
   playerPresent: true, track: 1, volume: 25,
   manualButtonEnabled: true, manualButtonAction: 1,
-  otaState: 'Idle: 0.1.6'
+  otaState: 'Up to date (v0.1.6)'
 };
 
 function isPreviewMode() {

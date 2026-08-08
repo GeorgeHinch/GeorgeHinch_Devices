@@ -214,7 +214,7 @@ String otaQueuedVersion;
 String otaQueuedUrl;
 String otaQueuedSha;
 size_t otaQueuedSize = 0;
-String otaLastState = "Boot: not checked";
+String otaLastState = "Not checked";
 char serialSetupCmd[SERIAL_SETUP_CMD_BUFFER + 1];
 uint8_t serialSetupCmdLen = 0;
 uint32_t serialSetupLastByteMs = 0;
@@ -361,14 +361,14 @@ bool downloadAndInstall(const String& url, const String& expectedSha256, size_t 
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   if (!http.begin(client, url)) {
     Serial.println("OTA: unable to initialize firmware request");
-    publishOtaState("ERROR: firmware request init");
+    publishOtaState("Update failed: request initialization");
     return false;
   }
 
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
     Serial.printf("OTA: firmware request failed: HTTP %d\n", status);
-    publishOtaState("ERROR: firmware request HTTP");
+    publishOtaState(String("Update failed: firmware HTTP ") + String(status));
     http.end();
     return false;
   }
@@ -376,14 +376,14 @@ bool downloadAndInstall(const String& url, const String& expectedSha256, size_t 
   int contentLength = http.getSize();
   if (expectedSize > 0 && contentLength > 0 && static_cast<size_t>(contentLength) != expectedSize) {
     Serial.println("OTA: firmware size mismatch");
-    publishOtaState("ERROR: firmware size mismatch");
+    publishOtaState("Update failed: firmware size mismatch");
     http.end();
     return false;
   }
 
   if (!Update.begin(contentLength > 0 ? contentLength : UPDATE_SIZE_UNKNOWN)) {
     Update.printError(Serial);
-    publishOtaState("ERROR: unable to prepare OTA partition");
+    publishOtaState("Update failed: unable to prepare storage");
     http.end();
     return false;
   }
@@ -410,7 +410,7 @@ bool downloadAndInstall(const String& url, const String& expectedSha256, size_t 
       Serial.println("OTA: flash write failed");
       Update.abort();
       mbedtls_sha256_free(&sha);
-      publishOtaState("ERROR: flash write failed");
+      publishOtaState("Update failed: flash write");
       http.end();
       return false;
     }
@@ -430,18 +430,18 @@ bool downloadAndInstall(const String& url, const String& expectedSha256, size_t 
     Serial.printf("OTA: SHA-256 mismatch\nExpected: %s\nActual: %s\n",
                   wanted.c_str(), actualSha256.c_str());
     Update.abort();
-    publishOtaState("ERROR: sha mismatch");
+    publishOtaState("Update failed: verification mismatch");
     return false;
   }
 
   if (!Update.end(true)) {
     Update.printError(Serial);
-    publishOtaState("ERROR: OTA finalize failed");
+    publishOtaState("Update failed: finalization");
     return false;
   }
 
   Serial.println("OTA: installed and rebooting");
-  publishOtaState("UPDATING: rebooting");
+  publishOtaState("Updating... restarting");
   delay(500);
   ESP.restart();
   return true;
@@ -456,9 +456,10 @@ void cacheManifestUpdate(const String& version, const String& url, const String&
 }
 
 void checkForOtaUpdate(bool force = false) {
+  publishOtaState("Checking...");
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("OTA: skipped, Wi-Fi not connected");
-    publishOtaState("ERROR: not connected");
+    publishOtaState("Unable to check: not connected");
     return;
   }
 
@@ -469,14 +470,14 @@ void checkForOtaUpdate(bool force = false) {
   http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
   if (!http.begin(manifestClient, manifestUrl())) {
     Serial.println("OTA: could not open manifest URL");
-    publishOtaState("ERROR: manifest request init");
+    publishOtaState("Unable to check: request initialization");
     return;
   }
 
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
     Serial.printf("OTA: manifest request failed: HTTP %d\n", status);
-    publishOtaState(String("ERROR: manifest HTTP ") + String(status));
+    publishOtaState(String("Unable to check: manifest HTTP ") + String(status));
     http.end();
     return;
   }
@@ -490,14 +491,14 @@ void checkForOtaUpdate(bool force = false) {
   http.end();
   if (error) {
     Serial.printf("OTA: manifest parse failed: %s\n", error.c_str());
-    publishOtaState("ERROR: manifest parse");
+    publishOtaState("Unable to check: invalid manifest");
     return;
   }
 
   JsonObject entry = doc["firmware"][DEVICE_TYPE];
   if (entry.isNull()) {
     Serial.printf("OTA: no manifest entry for %s\n", DEVICE_TYPE);
-    publishOtaState("ERROR: no manifest entry");
+    publishOtaState("Unable to check: firmware not listed");
     return;
   }
 
@@ -510,51 +511,51 @@ void checkForOtaUpdate(bool force = false) {
 
   if (version.isEmpty() || target.isEmpty() || url.isEmpty() || sha256.isEmpty() || size == 0) {
     Serial.println("OTA: manifest entry missing required fields");
-    publishOtaState("ERROR: malformed manifest entry");
+    publishOtaState("Unable to check: incomplete manifest");
     return;
   }
 
   if (target != HARDWARE_TARGET) {
     Serial.println("OTA: manifest target does not match");
-    publishOtaState("ERROR: incompatible target");
+    publishOtaState("Unable to check: incompatible target");
     return;
   }
 
   if (HARDWARE_REVISION < minHardware) {
     Serial.println("OTA: hardware revision is not sufficient");
-    publishOtaState("ERROR: incompatible hardware");
+    publishOtaState("Unable to check: incompatible hardware");
     return;
   }
 
   int cmp = compareSemver(FIRMWARE_VERSION, version);
   if (cmp >= 0) {
     Serial.printf("OTA: current firmware already at %s\n", FIRMWARE_VERSION);
-    publishOtaState(String("UP_TO_DATE: ") + FIRMWARE_VERSION);
+    publishOtaState(String("Up to date (v") + FIRMWARE_VERSION + ")");
     otaUpdateQueued = false;
     return;
   }
 
+  publishOtaState(String("Update available (v") + version + ")");
   if (!force && crossingActive) {
     Serial.printf("OTA: update %s available, queue until safe.\n", version.c_str());
     cacheManifestUpdate(version, url, sha256, size);
-    publishOtaState("DEFERRED: update available");
     return;
   }
 
-  publishOtaState(String("UPDATING: ") + version);
+  publishOtaState(String("Updating... (v") + version + ")");
   downloadAndInstall(url, sha256, size);
 }
 
 void serviceQueuedOtaInstall() {
   if (!otaUpdateQueued || crossingActive || (WiFi.status() != WL_CONNECTED)) return;
   Serial.printf("OTA: installing queued update %s\n", otaQueuedVersion.c_str());
-  publishOtaState(String("UPDATING: ") + otaQueuedVersion);
+  publishOtaState(String("Updating... (v") + otaQueuedVersion + ")");
   if (downloadAndInstall(otaQueuedUrl, otaQueuedSha, otaQueuedSize)) {
     otaUpdateQueued = false;
   } else {
     Serial.println("OTA: queued install failed; will retry on next check");
     otaUpdateQueued = false;
-    publishOtaState("ERROR: queued install failed");
+    publishOtaState("Update failed: queued installation");
   }
 }
 
@@ -653,11 +654,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     if (msg == "STATUS") {
       if (!cfg.mqttEnabled || !mqttClient.connected()) return;
-      String status = String("IDLE: ") + FIRMWARE_VERSION;
-      if (otaUpdateQueued) {
-        status = String("QUEUED: ") + otaQueuedVersion;
-      }
-      mqttClient.publish(mqttTopicOtaState.c_str(), status.c_str(), true);
+      mqttClient.publish(mqttTopicOtaState.c_str(), otaLastState.c_str(), true);
       return;
     }
   }
