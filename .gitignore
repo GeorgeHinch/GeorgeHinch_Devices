@@ -4,3 +4,5 @@ include/config.h
 release-assets/
 .DS_Store
 firmware/**/build/
+.sync-backups/
+.release-sync-build-*/

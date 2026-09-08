@@ -1,0 +1,1 @@
+HakoMachiDevicePortal.start();
